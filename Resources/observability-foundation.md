@@ -100,3 +100,8 @@ Given a time window, the prototype can produce a reproducible report that:
 5. emits chart-ready CSV/JSON plus a short explanation of evidence and limits.
 
 The prototype is an investigation aid, not an automated diagnosis engine.
+
+For the first manual data path, follow
+[`manual-export-workflow.md`](manual-export-workflow.md). It defines the
+evidence folder, export naming, redaction, manifest, validation, and handoff
+rules before a live collector is introduced.
