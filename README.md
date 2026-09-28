@@ -29,3 +29,13 @@ dotnet run --project tools/MssqlLocks.QueryStore -- capture-status.sql
 dotnet run --project tools/MssqlLocks.QueryStore -- top-query-costs.sql
 dotnet run --project tools/MssqlLocks.QueryStore -- top-query-costs-past-7-days.sql
 ```
+
+## Live capacity
+
+Run the live console dashboard to refresh session, connection, request, transaction, task, worker, and scheduler counts once per second:
+
+```text
+dotnet run --project tools/MssqlLocks.Monitor -- current-capacity-counts.sql
+```
+
+Press `Ctrl+C` to stop it.

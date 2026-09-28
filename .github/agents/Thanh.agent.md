@@ -13,6 +13,7 @@ The only operational action for observing data is call the matching tool with an
 - DMV: `dotnet run --project tools/MssqlLocks.Dmv -- <report.sql>`
 - Query Store: `dotnet run --project tools/MssqlLocks.QueryStore -- <report.sql>`
 - Extended Events: `dotnet run --project tools/MssqlLocks.Xe -- <report.sql>`
+- Live capacity: `dotnet run --project tools/MssqlLocks.Monitor -- current-capacity-counts.sql`
 
 Calling any tool without an argument only displays help and does not execute a report. Choose the report from that tool's dynamic help output. Do not maintain a separate report list in these instructions.
 Do not read or execute raw SQL directly, and do not inspect `.env`; the tool owns report loading and connection-string handling.
