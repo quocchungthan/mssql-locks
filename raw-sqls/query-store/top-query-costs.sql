@@ -4,7 +4,6 @@
 ;WITH RecentRuntime AS
 (
     SELECT
-        runtime_stats.query_id AS query_id,
         runtime_stats.plan_id AS plan_id,
         SUM(runtime_stats.count_executions) AS execution_count,
         SUM(runtime_stats.avg_duration * runtime_stats.count_executions) / NULLIF(SUM(runtime_stats.count_executions), 0) AS average_duration_us,
@@ -17,11 +16,11 @@
     INNER JOIN sys.query_store_runtime_stats_interval AS runtime_interval
         ON runtime_interval.runtime_stats_interval_id = runtime_stats.runtime_stats_interval_id
     WHERE runtime_interval.end_time >= DATEADD(HOUR, -24, SYSUTCDATETIME())
-    GROUP BY runtime_stats.query_id, runtime_stats.plan_id
+    GROUP BY runtime_stats.plan_id
 ), QueryStoreCosts AS
 (
     SELECT
-        recent_data.query_id AS query_id,
+        plan_data.query_id AS query_id,
         recent_data.plan_id AS plan_id,
         DB_NAME() AS database_name,
         query_data.object_id AS object_id,
@@ -36,11 +35,10 @@
         recent_data.average_logical_writes AS average_logical_writes,
         query_text.query_sql_text AS query_text
     FROM RecentRuntime AS recent_data
-    INNER JOIN sys.query_store_query AS query_data
-        ON query_data.query_id = recent_data.query_id
     INNER JOIN sys.query_store_plan AS plan_data
         ON plan_data.plan_id = recent_data.plan_id
-       AND plan_data.query_id = recent_data.query_id
+    INNER JOIN sys.query_store_query AS query_data
+        ON query_data.query_id = plan_data.query_id
     INNER JOIN sys.query_store_query_text AS query_text
         ON query_text.query_text_id = query_data.query_text_id
 )
