@@ -8,3 +8,4 @@ runtime/
 results/
 appsettings.*.json
 *.local.json
+.env
