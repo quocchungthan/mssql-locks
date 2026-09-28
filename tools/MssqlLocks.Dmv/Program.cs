@@ -3,13 +3,6 @@ using System.Data;
 using System.Diagnostics;
 
 const string RequiredVariable = "MSSQL_LOCKS_CONNECTION_STRING";
-const string DefaultReport = "blocking-chains.sql";
-var supportedReports = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-{
-    "active-requests.sql",
-    "blocking-chains.sql",
-    "top-cached-query-costs.sql"
-};
 
 using var cancellationTokenSource = new CancellationTokenSource();
 ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
@@ -22,6 +15,14 @@ Console.CancelKeyPress += cancelHandler;
 try
 {
     var repositoryRoot = FindRepositoryRoot();
+    var supportedReports = DiscoverSupportedReports(repositoryRoot);
+
+    if (args.Length == 0 || (args.Length == 1 && (args[0] == "--help" || args[0] == "-h")))
+    {
+        PrintHelp(supportedReports);
+        return 0;
+    }
+
     var reportName = ResolveReportName(args, supportedReports);
     var reportPath = Path.Combine(repositoryRoot, "raw-sqls", "dmv", reportName);
     var connectionString = LoadSQLConnectionString(repositoryRoot);
@@ -100,8 +101,7 @@ static string FindRepositoryRoot()
     var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
     while (directory is not null)
     {
-        if (File.Exists(Path.Combine(directory.FullName, ".env")) &&
-            Directory.Exists(Path.Combine(directory.FullName, "raw-sqls", "dmv")))
+        if (Directory.Exists(Path.Combine(directory.FullName, "raw-sqls", "dmv")))
         {
             return directory.FullName;
         }
@@ -109,7 +109,29 @@ static string FindRepositoryRoot()
         directory = directory.Parent;
     }
 
-    throw new InvalidOperationException("Could not locate the repository root containing .env and raw-sqls/dmv.");
+    throw new InvalidOperationException("Could not locate the repository root containing raw-sqls/dmv.");
+}
+
+static IReadOnlySet<string> DiscoverSupportedReports(string repositoryRoot)
+{
+    var dmvDirectory = Path.Combine(repositoryRoot, "raw-sqls", "dmv");
+    if (!Directory.Exists(dmvDirectory))
+    {
+        throw new InvalidOperationException($"DMV report directory was not found: {Path.Combine("raw-sqls", "dmv")}");
+    }
+
+    var reports = Directory.EnumerateFiles(dmvDirectory, "*.sql", SearchOption.TopDirectoryOnly)
+        .Select(Path.GetFileName)
+        .Where(fileName => fileName is not null)
+        .Cast<string>()
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    if (reports.Count == 0)
+    {
+        throw new InvalidOperationException("No SQL reports were found in raw-sqls/dmv.");
+    }
+
+    return reports;
 }
 
 static string ResolveReportName(string[] args, IReadOnlySet<string> supportedReports)
@@ -119,7 +141,7 @@ static string ResolveReportName(string[] args, IReadOnlySet<string> supportedRep
         throw new InvalidOperationException("Usage: MssqlLocks.Dmv [report filename or path]");
     }
 
-    var input = args.Length == 0 ? DefaultReport : args[0];
+    var input = args[0];
     if (Path.IsPathRooted(input) || input.Contains("..", StringComparison.Ordinal))
     {
         throw new InvalidOperationException("Report path must stay within raw-sqls/dmv.");
@@ -139,6 +161,21 @@ static string ResolveReportName(string[] args, IReadOnlySet<string> supportedRep
     }
 
     return reportName;
+}
+
+static void PrintHelp(IReadOnlySet<string> supportedReports)
+{
+    Console.WriteLine("Usage:");
+    Console.WriteLine("  dotnet run --project tools/MssqlLocks.Dmv -- <report>");
+    Console.WriteLine();
+    Console.WriteLine("No argument, --help, or -h displays this help without database access.");
+    Console.WriteLine("Supported reports:");
+    foreach (var report in supportedReports.Order(StringComparer.OrdinalIgnoreCase))
+    {
+        Console.WriteLine($"  {report}");
+    }
+    Console.WriteLine("Accepted path example: raw-sqls/dmv/blocking-chains.sql");
+    Console.WriteLine("A report is required; there is no implicit default report selection.");
 }
 
 static string LoadRequiredSetting(string envPath, string variableName)
