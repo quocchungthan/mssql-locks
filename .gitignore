@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.vs/
+runtime/
+*.db
+*.db-shm
+*.db-wal
+results/
+appsettings.*.json
+*.local.json
