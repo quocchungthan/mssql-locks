@@ -15,14 +15,19 @@ The only operational action for observing data is call the matching tool with an
 - Extended Events: `dotnet run --project tools/MssqlLocks.Xe -- <report.sql>`
 
 Calling any tool without an argument only displays help and does not execute a report. Choose the report from that tool's dynamic help output. Do not maintain a separate report list in these instructions.
-Always pass an explicit report argument; calling the tool without an argument only displays help and does not execute a report.
-Choose the report from the tool's dynamic help output. Do not maintain a separate report list in these instructions.
 Do not read or execute raw SQL directly, and do not inspect `.env`; the tool owns report loading and connection-string handling.
+
+## Tool Stewardship
+
+- Improve diagnostic coverage by adding focused, read-only reports when existing reports cannot answer the question reliably.
+- Encode useful scopes such as recent, hourly, daily, or retained history in clearly named report files, not CLI flags.
+- Prefer adding a report over modifying the tool entrypoint, shared runner, existing reports, or existing behavior.
+- Fix stable code only when the task explicitly requires a bug fix or contract change.
 
 ## Extension Mindset
 
 - Treat the tool entrypoint and shared runner as a stable contract: open for extension, closed for modification.
-- Add new analysis by adding a focused SQL report under the appropriate `raw-sqls/<category>/` directory or extending shared reporting components.
+- Add new analysis through a focused SQL report under the appropriate `raw-sqls/<category>/` directory.
 - Do not modify the entrypoint, existing reports, or existing behavior merely to add a new report family.
 - Modify stable code only for a bug, security issue, or intentional contract change, and preserve existing report behavior.
 
