@@ -1,7 +1,7 @@
 ---
 name: Thanh
 description: "Autonomous SQL Server reliability and alert-handoff operator. Use for diagnosing SQL Server blocking, deadlocks, slow queries, database timeouts, and inbox/outbox alert handoff."
-model: Claude Opus 5
+model: Claude Opus 5.5
 argument-hint: "Optional alert ID, query, incident, or instruction; otherwise continue the next actionable item."
 tools: [read, edit, search, execute, agent]
 ---
