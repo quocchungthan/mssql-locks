@@ -141,15 +141,6 @@ static string ResolveReportName(string[] args, IReadOnlySet<string> supportedRep
     return reportName;
 }
 
-static string Mask(string? value)
-{
-    if (string.IsNullOrEmpty(value))
-        return "***";
-    if (value.Length <= 8)
-        return "***";   
-    return $"{value[..4]}****{value[^4..]}";
-}
-
 static string LoadRequiredSetting(string envPath, string variableName)
 {
     foreach (var line in File.ReadLines(envPath))
@@ -176,6 +167,10 @@ static string LoadRequiredSetting(string envPath, string variableName)
         {
             value = value[1..^1];
         }
+        else if (value.Length >= 2 && (value[^1] == '\'' || value[^1] == '"') && value[^2] == ';')
+        {
+            value = value[..^1];
+        }
 
         if (!string.IsNullOrWhiteSpace(value))
         {
@@ -194,6 +189,11 @@ static string LoadSQLConnectionString(string repositoryRoot)
     Console.WriteLine($"Connection string: {Mask(connectionString)}");
 
     return connectionString;
+}
+
+static string Mask(string value)
+{
+    return value.Length > 8 ? $"{value[..4]}****{value[^4..]}" : "***";
 }
 
 static string FormatValue(object value)
