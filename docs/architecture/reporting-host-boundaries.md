@@ -25,9 +25,11 @@ These are logical boundaries inside the existing shared project, not separate de
 4. The file source resolves the repository-relative reference and rejects paths outside its configured root.
 5. The SQL adapter uses read-only application intent and a bounded command timeout. Result delivery remains row-oriented rather than buffering a full result set.
 
-## Future UI Host
+## MVC And SignalR Host
 
-A UI is a future host, not a separate implementation of report logic. It should compose `IReportApplicationService` with host-owned configuration, authorization, and a UI result consumer. It can render the neutral column and row stream without taking a dependency on `DbDataReader` or the console renderer. UI-specific view state and presentation should stay in that host; pack validation and execution orchestration stay in the shared application layer.
+`tools/MssqlLocks.Web` is an MVC host over the same `IReportApplicationService`. Its hosted worker owns one opt-in polling loop; it does not poll once per connected browser. A strongly typed SignalR hub broadcasts status and completed snapshots. The dashboard starts and stops the worker through antiforgery-protected MVC posts.
+
+The web host filters query-text and identity columns before it broadcasts a snapshot, caps each rendered sample at 100 rows, and loads connection configuration only after the watch starts. Keep it bound to localhost until authentication and authorization are configured for a shared deployment. UI-specific state and presentation stay in the web host; report selection and SQL execution remain behind shared contracts.
 
 ## Security And Data Handling
 
@@ -41,4 +43,4 @@ A UI is a future host, not a separate implementation of report logic. It should 
 1. Add offline tests for invalid pack definitions, report membership, path containment, and the application service using fake interfaces when a test project is introduced.
 2. Keep the present file-backed pack adapter until there is a concrete second storage format; adopt alternatives behind `IReportSqlSource` rather than adding a general plugin framework.
 3. If the domain or application layer grows, extract it into a technology-independent project with explicit references and keep SQL-provider dependencies in infrastructure.
-4. When a UI host is approved, compose the shared application service there and add host-level authorization, presentation, and end-to-end checks.
+4. Add automated tests for watch state transitions, snapshot redaction, and the MVC/SignalR flow; configure authentication before any shared deployment.

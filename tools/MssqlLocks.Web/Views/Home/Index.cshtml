@@ -1,0 +1,109 @@
+﻿@model MssqlLocks.Web.Models.WatchDashboardViewModel
+
+@{
+    ViewData["Title"] = "Memory Grants";
+}
+
+<section class="dashboard" aria-labelledby="page-title">
+    <header class="dashboard-heading">
+        <div>
+            <p class="eyebrow">SQL SERVER / LIVE DIAGNOSTICS</p>
+            <h1 id="page-title">Memory grants</h1>
+            <p class="lede">Current requests, grant state, and semaphore pressure.</p>
+        </div>
+        <div class="connection-state" aria-live="polite">
+            <span class="state-dot" id="state-dot" data-state="@Model.Status.State.ToLowerInvariant()"></span>
+            <span id="watch-state">@Model.Status.State</span>
+        </div>
+    </header>
+
+    <section class="control-band" aria-label="Watch controls">
+        <div class="control-copy">
+            <strong>Snapshot watch</strong>
+            <span id="status-message">@Model.Status.Message</span>
+        </div>
+        <form asp-controller="Watch" asp-action="Start" method="post" id="start-form" class="watch-form" hidden="@Model.Status.IsRunning">
+            @Html.AntiForgeryToken()
+            <label for="interval-seconds">Refresh interval</label>
+            <select id="interval-seconds" name="intervalSeconds">
+                <option value="5" selected="@(Model.Status.IntervalSeconds == 5)">5 sec</option>
+                <option value="10" selected="@(Model.Status.IntervalSeconds == 10)">10 sec</option>
+                <option value="30" selected="@(Model.Status.IntervalSeconds == 30)">30 sec</option>
+                <option value="60" selected="@(Model.Status.IntervalSeconds == 60)">60 sec</option>
+            </select>
+            <button class="button button-start" type="submit">Start watch</button>
+        </form>
+        <form asp-controller="Watch" asp-action="Stop" method="post" id="stop-form" hidden="@(!Model.Status.IsRunning)">
+            @Html.AntiForgeryToken()
+            <button class="button button-stop" type="submit">Stop watch</button>
+        </form>
+    </section>
+
+    <section class="metric-strip" aria-label="Latest snapshot summary">
+        <div class="metric">
+            <span class="metric-label">Waiting</span>
+            <strong id="waiting-count">@(Model.Snapshot?.WaitingCount ?? 0)</strong>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Granted</span>
+            <strong id="granted-count">@(Model.Snapshot?.GrantedCount ?? 0)</strong>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Rows sampled</span>
+            <strong id="rows-count">@(Model.Snapshot?.TotalRows ?? 0)</strong>
+        </div>
+        <div class="metric metric-time">
+            <span class="metric-label">Last sample</span>
+            <strong id="sample-time">@(Model.Snapshot?.CapturedAt.ToLocalTime().ToString("HH:mm:ss") ?? "--:--:--")</strong>
+        </div>
+    </section>
+
+    <section class="results" aria-labelledby="results-title">
+        <div class="results-heading">
+            <div>
+                <p class="eyebrow">LATEST SAMPLE</p>
+                <h2 id="results-title">Grant activity</h2>
+            </div>
+            <span class="result-count" id="visible-count">@(Model.Snapshot?.Rows.Count ?? 0) visible</span>
+        </div>
+        <div class="table-scroll" role="region" aria-label="Memory grant sample" tabindex="0">
+            <table>
+                <thead id="results-head">
+                    @if (Model.Snapshot is not null)
+                    {
+                        <tr>
+                            @foreach (var column in Model.Snapshot.Columns)
+                            {
+                                <th scope="col">@column</th>
+                            }
+                        </tr>
+                    }
+                </thead>
+                <tbody id="results-body">
+                    @if (Model.Snapshot is not null)
+                    {
+                        @foreach (var row in Model.Snapshot.Rows)
+                        {
+                            <tr>
+                                @foreach (var value in row)
+                                {
+                                    <td>@(value ?? "NULL")</td>
+                                }
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr class="empty-row"><td colspan="8">Start the watch to capture a snapshot.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="table-note" id="table-note">Sensitive identity and query-text columns are withheld from the live view.</p>
+    </section>
+</section>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js" asp-append-version="true"></script>
+    <script src="~/js/memory-grants.js" asp-append-version="true"></script>
+}

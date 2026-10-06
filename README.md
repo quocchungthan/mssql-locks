@@ -49,3 +49,17 @@ dotnet run --project tools/MssqlLocks.Dmv -- memory-grants.sql --watch
 ```
 
 Set a different positive refresh interval in seconds with `--interval-seconds N`. Watch mode is limited to `memory-grants.sql`; without `--watch`, DMV reports continue to run once and exit.
+
+## Web dashboard
+
+The MVC dashboard serves a read-only live memory-grants view. From the repository root, restore its local SignalR browser asset and start the web host:
+
+```powershell
+Push-Location tools/MssqlLocks.Web
+npm ci
+npm run copy:signalr
+Pop-Location
+dotnet run --project tools/MssqlLocks.Web --launch-profile http
+```
+
+Open `http://localhost:5127`. The watcher stays stopped until started in the page; refresh intervals are limited to 5, 10, 30, or 60 seconds. Configure `MSSQL_LOCKS_CONNECTION_STRING` through the existing `.env` or environment variable. Keep the host bound to localhost unless authentication and access controls are configured before exposing it to other machines.

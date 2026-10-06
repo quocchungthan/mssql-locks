@@ -6,6 +6,12 @@ public static class DotEnvConnection
 
     public static string Load(string repositoryRoot)
     {
+        var environmentValue = Environment.GetEnvironmentVariable(VariableName);
+        if (!string.IsNullOrWhiteSpace(environmentValue))
+        {
+            return environmentValue;
+        }
+
         var envPath = Path.Combine(repositoryRoot, ".env");
         if (!File.Exists(envPath))
         {
@@ -43,7 +49,6 @@ public static class DotEnvConnection
 
             if (!string.IsNullOrWhiteSpace(value))
             {
-                Console.WriteLine($"Connection string: {Mask(value)}");
                 return value;
             }
 
@@ -52,6 +57,4 @@ public static class DotEnvConnection
 
         throw new InvalidOperationException($"Required .env variable '{VariableName}' is missing or empty.");
     }
-
-    private static string Mask(string value) => value.Length > 8 ? $"{value[..4]}****{value[^4..]}" : "***";
 }
