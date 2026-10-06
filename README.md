@@ -39,3 +39,13 @@ dotnet run --project tools/MssqlLocks.Monitor -- current-capacity-counts.sql
 ```
 
 Press `Ctrl+C` to stop it.
+
+## Live memory grants
+
+Opt in to refresh the existing read-only memory-grants report every two seconds:
+
+```text
+dotnet run --project tools/MssqlLocks.Dmv -- memory-grants.sql --watch
+```
+
+Set a different positive refresh interval in seconds with `--interval-seconds N`. Watch mode is limited to `memory-grants.sql`; without `--watch`, DMV reports continue to run once and exit.

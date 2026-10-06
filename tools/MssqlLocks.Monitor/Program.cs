@@ -30,7 +30,8 @@ try
 
     var catalog = ReportCatalog.Discover(Directory.GetCurrentDirectory(), "dmv");
     var report = catalog.Resolve(args);
-    var sql = await File.ReadAllTextAsync(report.AbsolutePath, cancellationTokenSource.Token);
+    var sql = await new FileReportSqlSource(catalog.RepositoryRoot)
+        .ReadAsync(report, cancellationTokenSource.Token);
     var connectionString = DotEnvConnection.Load(catalog.RepositoryRoot);
     var connectionBuilder = new SqlConnectionStringBuilder(connectionString)
     {

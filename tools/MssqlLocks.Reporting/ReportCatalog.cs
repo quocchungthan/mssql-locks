@@ -8,11 +8,13 @@ public sealed class ReportCatalog
     {
         RepositoryRoot = repositoryRoot;
         Category = category;
-        this.reports = reports;
+        Pack = new ReportPack(category, reports);
+        this.reports = Pack.Reports;
     }
 
     public string RepositoryRoot { get; }
     public string Category { get; }
+    public ReportPack Pack { get; }
 
     public static ReportCatalog Discover(string startingDirectory, string category)
     {
@@ -26,8 +28,7 @@ public sealed class ReportCatalog
                     .Select(reportPath => new ReportDefinition(
                         category,
                         Path.GetFileName(reportPath),
-                        $"raw-sqls/{category}/{Path.GetFileName(reportPath)}",
-                        reportPath))
+                        $"raw-sqls/{category}/{Path.GetFileName(reportPath)}"))
                     .OrderBy(report => report.FileName, StringComparer.OrdinalIgnoreCase)
                     .ToArray();
 

@@ -6,6 +6,12 @@ runtime/
 *.db-shm
 *.db-wal
 results/
+/captures/*.jsonl
+/captures/*.log
+/memory-grants-watch.log
+/portable-memory-grants/*.jsonl
+/portable-memory-grants/*.html
+/portable-memory-grants/*.log
 appsettings.*.json
 *.local.json
 .env

@@ -12,6 +12,9 @@ Console.CancelKeyPress += cancelHandler;
 try
 {
     var catalog = ReportCatalog.Discover(Directory.GetCurrentDirectory(), "xe");
+    IReportApplicationService reportApplication = new ReportApplicationService(
+        new FileReportSqlSource(catalog.RepositoryRoot),
+        new SqlReportRunner());
     if (args.Length == 0 || (args.Length == 1 && (args[0] == "--help" || args[0] == "-h")))
     {
         catalog.PrintHelp("tools/MssqlLocks.Xe");
@@ -21,10 +24,11 @@ try
     var report = catalog.Resolve(args);
     var connectionString = DotEnvConnection.Load(catalog.RepositoryRoot);
     Console.WriteLine($"Report: {report.RelativePath}");
-    await new SqlReportRunner().RunAsync(
+    await reportApplication.RunAsync(
+        catalog.Pack,
         report,
         connectionString,
-        ConsoleTable.RenderAsync,
+        new ConsoleTable(),
         cancellationTokenSource.Token);
     return 0;
 }
