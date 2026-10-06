@@ -6,10 +6,13 @@ namespace MssqlLocks.Web.Tests;
 public sealed class MemoryGrantsWatchTests
 {
     [Theory]
+    [InlineData(1)]
     [InlineData(5)]
     [InlineData(10)]
+    [InlineData(15)]
     [InlineData(30)]
     [InlineData(60)]
+    [InlineData(300)]
     public void StartAcceptsSupportedIntervals(int intervalSeconds)
     {
         var state = new MemoryGrantsWatchState();
@@ -23,9 +26,7 @@ public sealed class MemoryGrantsWatchTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(15)]
-    [InlineData(300)]
+    [InlineData(-1)]
     public void StartRejectsUnsupportedIntervals(int intervalSeconds)
     {
         var state = new MemoryGrantsWatchState();
@@ -65,6 +66,21 @@ public sealed class MemoryGrantsWatchTests
         state.Stop();
 
         Assert.True(watchCancellation.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void CapacityMonitorStartsAtTheCliRefreshCadenceAndStops()
+    {
+        var state = new CapacityWatchState();
+
+        var runningStatus = state.Start();
+        var watchCancellation = state.Read().WatchCancellation;
+        var stoppedStatus = state.Stop();
+
+        Assert.True(runningStatus.IsRunning);
+        Assert.Equal(1, runningStatus.IntervalSeconds);
+        Assert.True(watchCancellation.IsCancellationRequested);
+        Assert.False(stoppedStatus.IsRunning);
     }
 
     [Fact]

@@ -52,7 +52,7 @@ Set a different positive refresh interval in seconds with `--interval-seconds N`
 
 ## Web dashboard
 
-The MVC dashboard serves a read-only live memory-grants view. From the repository root, restore its local SignalR browser asset and start the web host:
+The MVC dashboard can run every discovered DMV, Query Store, and Extended Events report, plus the live capacity and memory-grants monitors. One-shot results are limited to 250 displayed rows. From the repository root, restore its local SignalR browser asset and start the web host:
 
 ```powershell
 Push-Location tools/MssqlLocks.Web
@@ -62,4 +62,4 @@ Pop-Location
 dotnet run --project tools/MssqlLocks.Web --launch-profile http
 ```
 
-Open `http://localhost:5127`. The watcher stays stopped until started in the page; refresh intervals are limited to 5, 10, 30, or 60 seconds. Configure `MSSQL_LOCKS_CONNECTION_STRING` through the existing `.env` or environment variable. Keep the host bound to localhost unless authentication and access controls are configured before exposing it to other machines.
+Open `http://localhost:5127`. Both monitors stay stopped until explicitly started; capacity refreshes every second and memory-grants accepts any positive integer interval in seconds. Configure `MSSQL_LOCKS_CONNECTION_STRING` through the existing `.env` or environment variable. Report results can include query text or server details. Keep the host bound to localhost unless authentication and access controls are configured before exposing it to other machines.

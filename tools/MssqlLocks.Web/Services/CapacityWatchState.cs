@@ -1,28 +1,27 @@
 namespace MssqlLocks.Web.Services;
 
-public sealed class MemoryGrantsWatchState
+public sealed class CapacityWatchState
 {
     private readonly object gate = new();
-    private WatchStatus status = WatchStatus.Stopped;
-    private MemoryGrantSnapshot? snapshot;
+    private WatchStatus status = WatchStatus.Stopped with { IntervalSeconds = 1 };
+    private CapacitySnapshot? snapshot;
     private CancellationTokenSource? watchCancellation;
     private TaskCompletionSource changed = CreateSignal();
 
-    public WatchObservation Read()
+    public CapacityWatchObservation Read()
     {
         lock (gate)
         {
-            return new WatchObservation(status, snapshot, changed.Task, watchCancellation?.Token ?? CancellationToken.None);
+            return new CapacityWatchObservation(
+                status,
+                snapshot,
+                changed.Task,
+                watchCancellation?.Token ?? CancellationToken.None);
         }
     }
 
-    public WatchStatus Start(int intervalSeconds)
+    public WatchStatus Start()
     {
-        if (intervalSeconds < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(intervalSeconds));
-        }
-
         lock (gate)
         {
             if (!status.IsRunning)
@@ -33,9 +32,9 @@ public sealed class MemoryGrantsWatchState
             status = status with
             {
                 IsRunning = true,
-                IntervalSeconds = intervalSeconds,
+                IntervalSeconds = 1,
                 State = "Starting",
-                Message = "Starting the next sample.",
+                Message = "Starting the one-second capacity sample.",
             };
             SignalChanged();
             return status;
@@ -54,7 +53,7 @@ public sealed class MemoryGrantsWatchState
             {
                 IsRunning = false,
                 State = "Stopped",
-                Message = "Watch stopped. The last sample remains available.",
+                Message = "Capacity monitor stopped. The last sample remains available.",
             };
             SignalChanged();
             updatedStatus = status;
@@ -66,10 +65,10 @@ public sealed class MemoryGrantsWatchState
     }
 
     public WatchStatus MarkSampling() => Update(current => current.IsRunning
-        ? current with { State = "Sampling", Message = "Reading the latest sample." }
+        ? current with { State = "Sampling", Message = "Reading live capacity." }
         : current);
 
-    public bool TryMarkLive(MemoryGrantSnapshot latestSnapshot, out WatchStatus updatedStatus)
+    public bool TryMarkLive(CapacitySnapshot latestSnapshot, out WatchStatus updatedStatus)
     {
         ArgumentNullException.ThrowIfNull(latestSnapshot);
 
@@ -86,7 +85,7 @@ public sealed class MemoryGrantsWatchState
             {
                 State = "Live",
                 LastSampleAt = latestSnapshot.CapturedAt,
-                Message = $"Refreshing every {status.IntervalSeconds} seconds.",
+                Message = "Refreshing every second.",
             };
             SignalChanged();
             updatedStatus = status;

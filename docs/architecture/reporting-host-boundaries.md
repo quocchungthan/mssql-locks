@@ -27,7 +27,7 @@ These are logical boundaries inside the existing shared project, not separate de
 
 ## MVC And SignalR Host
 
-`tools/MssqlLocks.Web` is an MVC host over the same `IReportApplicationService`. Its hosted worker owns one opt-in polling loop; it does not poll once per connected browser. A strongly typed SignalR hub broadcasts status and completed snapshots. The dashboard starts and stops the worker through antiforgery-protected MVC posts.
+`tools/MssqlLocks.Web` is an MVC host over the same `IReportApplicationService`. It discovers and runs report definitions from the DMV, Query Store, and Extended Events packs. Its two hosted workers implement the existing live capacity and memory-grants commands; each owns one opt-in polling loop and does not poll once per connected browser. Strongly typed SignalR hubs broadcast status and completed snapshots. The dashboard starts and stops workers through antiforgery-protected MVC posts, and supports the memory-grants CLI's positive-integer interval option.
 
 The web host filters query-text and identity columns before it broadcasts a snapshot, caps each rendered sample at 100 rows, and loads connection configuration only after the watch starts. Keep it bound to localhost until authentication and authorization are configured for a shared deployment. UI-specific state and presentation stay in the web host; report selection and SQL execution remain behind shared contracts.
 

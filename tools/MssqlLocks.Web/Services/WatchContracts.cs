@@ -29,3 +29,21 @@ public sealed record WatchObservation(
     MemoryGrantSnapshot? Snapshot,
     Task Changed,
     CancellationToken WatchCancellation);
+
+public sealed record ReportResult(
+    IReadOnlyList<string> Columns,
+    IReadOnlyList<IReadOnlyList<string?>> Rows,
+    long TotalRows,
+    TimeSpan Elapsed,
+    bool IsTruncated);
+
+public sealed record CapacitySnapshot(
+    DateTimeOffset CapturedAt,
+    IReadOnlyList<string> Columns,
+    IReadOnlyList<string?> Values);
+
+public sealed record CapacityWatchObservation(
+    WatchStatus Status,
+    CapacitySnapshot? Snapshot,
+    Task Changed,
+    CancellationToken WatchCancellation);

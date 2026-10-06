@@ -7,13 +7,15 @@ namespace MssqlLocks.Web.Controllers;
 
 public sealed class WatchController(
     MemoryGrantsWatchState watchState,
-    IHubContext<MemoryGrantsHub, IMemoryGrantsWatchClient> hub) : Controller
+    CapacityWatchState capacityWatchState,
+    IHubContext<MemoryGrantsHub, IMemoryGrantsWatchClient> hub,
+    IHubContext<CapacityHub, ICapacityWatchClient> capacityHub) : Controller
 {
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(int intervalSeconds)
     {
-        if (intervalSeconds is not (5 or 10 or 30 or 60))
+        if (intervalSeconds < 1)
         {
             return BadRequest();
         }
@@ -29,6 +31,24 @@ public sealed class WatchController(
     {
         var status = watchState.Stop();
         await hub.Clients.All.StatusChanged(status);
+        return RedirectToAction("Index", "Home");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> StartCapacity()
+    {
+        var status = capacityWatchState.Start();
+        await capacityHub.Clients.All.StatusChanged(status);
+        return RedirectToAction("Index", "Home");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> StopCapacity()
+    {
+        var status = capacityWatchState.Stop();
+        await capacityHub.Clients.All.StatusChanged(status);
         return RedirectToAction("Index", "Home");
     }
 }
