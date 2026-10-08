@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#101314">
-    <meta name="description" content="A portfolio profile">
-    <title>Portfolio</title>
+    <meta name="description" content="Search profiles, projects, skills, and links">
+    <title>Portfolio directory</title>
     <link rel="stylesheet" href="/styles.css">
     <script src="/app.js" defer></script>
   </head>
@@ -13,23 +13,45 @@
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <nav class="page-width nav" aria-label="Primary">
-        <a class="brand" href="/">⌘ <span>portfolio<span class="muted"> / profile</span></span></a>
-        <a class="nav-link" href="#projects">Projects</a>
-        <a class="nav-link" href="#experience">Experience</a>
-        <a class="nav-link" href="#skills">Skills</a>
+        <a class="brand" href="/search">⌘ <span>portfolio<span class="muted"> / directory</span></span></a>
+        <a class="nav-link" href="/search">Search</a>
+        <a class="nav-link" href="/search?type=profiles">Profiles</a>
+        <a class="nav-link" href="/search?type=projects">Projects</a>
+        <a class="nav-link" href="/search?type=skills">Skills</a>
       </nav>
     </header>
     <main id="main" class="page-width">
-      <form id="profile-picker" class="profile-picker">
-        <label for="profile-key">Profile ID</label>
-        <input id="profile-key" name="profileKey" inputmode="numeric" autocomplete="off" placeholder="e.g. 1" required>
-        <button type="submit">Open profile <span aria-hidden="true">↗</span></button>
-      </form>
-      <p id="status" class="status" role="status" aria-live="polite">Enter a profile ID to view its portfolio.</p>
+      <section id="search-page" class="search-page">
+        <div class="directory-hero">
+          <p class="command"><span>$</span> find --in portfolios</p>
+          <h1>Follow the work.<br><span>Find the people.</span></h1>
+          <p class="directory-intro">Search across profiles, projects, technologies, and social links. Every result opens a path deeper into the portfolio.</p>
+        </div>
+        <form id="search-form" class="search-form">
+          <label class="sr-only" for="search-query">Search the portfolio directory</label>
+          <div class="search-command">
+            <span class="search-prompt" aria-hidden="true">›</span>
+            <input id="search-query" name="q" type="search" maxlength="100" autocomplete="off" placeholder="Search names, projects, skills, links…" aria-describedby="search-hint">
+            <button type="submit">Search <span aria-hidden="true">↵</span></button>
+          </div>
+          <fieldset class="search-filters">
+            <legend>Filter results</legend>
+            <label><input type="checkbox" name="type" value="profiles" checked><span>Profiles</span></label>
+            <label><input type="checkbox" name="type" value="projects" checked><span>Projects</span></label>
+            <label><input type="checkbox" name="type" value="skills" checked><span>Skills</span></label>
+            <label><input type="checkbox" name="type" value="links" checked><span>Links</span></label>
+            <span id="search-hint" class="search-hint">Press Enter to search · leave empty to browse everything</span>
+          </fieldset>
+        </form>
+        <p id="status" class="status" role="status" aria-live="polite">Loading the directory…</p>
+        <section id="search-results" aria-label="Search results" hidden></section>
+      </section>
+      <p id="detail-status" class="status" role="status" aria-live="polite" hidden></p>
       <div id="portfolio" hidden></div>
+      <div id="project-detail" hidden></div>
     </main>
     <footer class="page-width footer">
-      <span class="mono">PORTFOLIO API</span>
+      <a href="/search">PORTFOLIO DIRECTORY</a>
       <a href="#main">Back to top ↑</a>
     </footer>
   </body>

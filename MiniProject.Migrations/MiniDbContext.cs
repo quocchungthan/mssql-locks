@@ -34,6 +34,7 @@ public class MiniDbContext : DbContext
             entity.Property(profile => profile.Location).HasMaxLength(160);
             entity.Property(profile => profile.ContactEmail).HasMaxLength(320);
             entity.Property(profile => profile.ProfileImageUrl).HasMaxLength(2048);
+            entity.Property(profile => profile.AvatarSvg).HasColumnType("nvarchar(max)");
             entity.Property(profile => profile.ResumeUrl).HasMaxLength(2048);
 
             entity.HasMany(profile => profile.Projects)

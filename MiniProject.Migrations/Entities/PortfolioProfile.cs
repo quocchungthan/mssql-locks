@@ -9,6 +9,7 @@ public class PortfolioProfile
     public string? Location { get; set; }
     public string? ContactEmail { get; set; }
     public string? ProfileImageUrl { get; set; }
+    public string? AvatarSvg { get; set; }
     public string? ResumeUrl { get; set; }
 
     public ICollection<ProfileProject> Projects { get; set; } = new List<ProfileProject>();

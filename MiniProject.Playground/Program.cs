@@ -69,6 +69,10 @@ internal static class Program
         var profilePagePath = Path.Combine(app.Environment.WebRootPath, "index.html");
         app.MapGet("/profile/{profileKey}", () =>
             Results.File(profilePagePath, "text/html; charset=utf-8"));
+        app.MapGet("/project/{slug}", () =>
+            Results.File(profilePagePath, "text/html; charset=utf-8"));
+        app.MapGet("/search", () =>
+            Results.File(profilePagePath, "text/html; charset=utf-8"));
 
         app.MapGet("/health", async (
             IDatabaseHealthService healthService,
@@ -77,7 +81,10 @@ internal static class Program
                 ? Results.Ok(new { status = "Healthy", database = "Connected" })
                 : Results.StatusCode(StatusCodes.Status503ServiceUnavailable));
 
+        app.MapGet("/api/portfolios/{profileId:int}/avatar", GetProfileAvatarAsync);
         app.MapGet("/api/portfolios/{profileId:int}", GetPortfolioAsync);
+        app.MapGet("/api/projects/{slug}", GetProjectAsync);
+        app.MapGet("/api/search", SearchAsync);
 
         await app.RunAsync();
     }
@@ -95,6 +102,69 @@ internal static class Program
         }
 
         return Results.Ok(profile);
+    }
+
+    private static async Task<IResult> GetProjectAsync(
+        string slug,
+        IPortfolioService portfolioService,
+        CancellationToken cancellationToken)
+    {
+        var project = await portfolioService.GetProjectBySlugAsync(slug, cancellationToken);
+
+        return project is null ? Results.NotFound() : Results.Ok(project);
+    }
+
+    private static async Task<IResult> GetProfileAvatarAsync(
+        int profileId,
+        IPortfolioService portfolioService,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var avatarSvg = await portfolioService.GetAvatarSvgAsync(profileId, cancellationToken);
+        if (avatarSvg is null)
+        {
+            return Results.NotFound();
+        }
+
+        httpContext.Response.Headers.CacheControl = "public,max-age=31536000,immutable";
+        return Results.Content(avatarSvg, "image/svg+xml; charset=utf-8");
+    }
+
+    private static async Task<IResult> SearchAsync(
+        string? q,
+        string? types,
+        IPortfolioService portfolioService,
+        CancellationToken cancellationToken)
+    {
+        var selectedTypes = string.IsNullOrWhiteSpace(types)
+            ? new[] { "profiles", "projects", "skills", "links" }
+            : types.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var allowedTypes = new HashSet<string>(
+            ["profiles", "projects", "skills", "links"],
+            StringComparer.OrdinalIgnoreCase);
+
+        if (selectedTypes.Length == 0 || selectedTypes.Any(type => !allowedTypes.Contains(type)))
+        {
+            return Results.BadRequest(new
+            {
+                error = "Types must be selected from profiles, projects, skills, links."
+            });
+        }
+
+        if (q?.Trim().Length > 100)
+        {
+            return Results.BadRequest(new { error = "Search query must be 100 characters or fewer." });
+        }
+
+        var results = await portfolioService.SearchAsync(q, selectedTypes, cancellationToken);
+
+        return Results.Ok(new
+        {
+            query = q?.Trim() ?? string.Empty,
+            types = selectedTypes,
+            total = results.Count,
+            results
+        });
     }
 
     private static Dictionary<string, string> ReadDotEnvValues()

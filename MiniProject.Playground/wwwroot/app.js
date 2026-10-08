@@ -1,9 +1,14 @@
 "use strict";
 
 const portfolioRoot = document.querySelector("#portfolio");
+const projectRoot = document.querySelector("#project-detail");
 const statusMessage = document.querySelector("#status");
-const profileKeyInput = document.querySelector("#profile-key");
-const profilePicker = document.querySelector("#profile-picker");
+const detailStatus = document.querySelector("#detail-status");
+const searchPage = document.querySelector("#search-page");
+const searchForm = document.querySelector("#search-form");
+const searchInput = document.querySelector("#search-query");
+const searchResults = document.querySelector("#search-results");
+const searchFilters = Array.from(document.querySelectorAll('input[name="type"]'));
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -40,6 +45,95 @@ function section(index, title, id, content) {
   </section>`;
 }
 
+function resultCard(result) {
+  const externalUrl = safeUrl(result.externalUrl);
+  const avatarUrl = result.type === "profile" && safeUrl(result.avatarUrl)
+    ? `<img class="result-avatar" src="${escapeHtml(safeUrl(result.avatarUrl))}" alt="" loading="lazy">`
+    : `<span class="result-avatar-placeholder" aria-hidden="true">${escapeHtml(result.type.slice(0, 1).toUpperCase())}</span>`;
+  return `<article class="result-card">
+    <div class="result-card-top">${avatarUrl}<div>
+      <div class="result-meta"><span class="result-type">${escapeHtml(result.type)}</span>${result.context ? `<span>${escapeHtml(result.context)}</span>` : ""}</div>
+      <h2><a href="${escapeHtml(result.href)}">${escapeHtml(result.title)} <span aria-hidden="true">↗</span></a></h2>
+    </div></div>
+    <p>${escapeHtml(result.description)}</p>
+    ${externalUrl ? `<a class="result-external" href="${escapeHtml(externalUrl)}" target="_blank" rel="noopener noreferrer">Open external link ↗</a>` : ""}
+  </article>`;
+}
+
+function renderSearchResults(payload) {
+  const counts = new Map();
+  for (const result of payload.results) counts.set(result.type, (counts.get(result.type) || 0) + 1);
+  const summary = Array.from(counts, ([type, count]) =>
+    `<span><strong>${count}</strong> ${escapeHtml(type)}${count === 1 ? "" : "s"}</span>`).join("");
+  searchResults.innerHTML = `
+    <div class="results-heading">
+      <div><p class="section-index">DIRECTORY / ${String(payload.total).padStart(2, "0")} MATCHES</p><h2>${payload.query ? `Results for “${escapeHtml(payload.query)}”` : "Browse the directory"}</h2></div>
+      <p class="result-counts">${summary || "Try another search or filter."}</p>
+    </div>
+    ${payload.results.length
+      ? `<div class="results-grid">${payload.results.map(resultCard).join("")}</div>`
+      : `<p class="no-results">No matches yet. Try a broader query or enable another result type.</p>`}`;
+  searchResults.hidden = false;
+}
+
+function selectedSearchTypes() {
+  return searchFilters.filter(filter => filter.checked).map(filter => filter.value);
+}
+
+async function performSearch({ updateHistory = true } = {}) {
+  const selectedTypes = selectedSearchTypes();
+  if (selectedTypes.length === 0) {
+    statusMessage.textContent = "Select at least one result type.";
+    statusMessage.hidden = false;
+    searchResults.hidden = true;
+    return;
+  }
+
+  const query = searchInput.value.trim();
+  const pageQuery = new URLSearchParams();
+  if (query) pageQuery.set("q", query);
+  for (const type of selectedTypes) pageQuery.append("type", type);
+  if (updateHistory) {
+    history.pushState(null, "", `/search?${pageQuery.toString()}`);
+  }
+
+  const apiQuery = new URLSearchParams({ types: selectedTypes.join(",") });
+  if (query) apiQuery.set("q", query);
+  statusMessage.hidden = false;
+  statusMessage.textContent = "Searching profiles, projects, skills, and links…";
+  searchResults.hidden = true;
+  try {
+    const response = await fetch(`/api/search?${apiQuery.toString()}`, {
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok) throw new Error(`Request failed (${response.status}).`);
+    renderSearchResults(await response.json());
+    statusMessage.hidden = true;
+    document.title = query ? `Search: ${query} · Portfolio directory` : "Browse · Portfolio directory";
+  } catch (error) {
+    statusMessage.textContent = `Could not search the directory. ${error.message}`;
+  }
+}
+
+function loadSearchFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  searchInput.value = params.get("q") || "";
+  const requestedTypes = [
+    ...params.getAll("type").flatMap(value => value.split(",")),
+    ...params.getAll("types").flatMap(value => value.split(","))
+  ].filter(Boolean);
+  for (const filter of searchFilters) {
+    filter.checked = requestedTypes.length === 0 || requestedTypes.includes(filter.value);
+  }
+  void performSearch({ updateHistory: false });
+}
+
+searchForm.addEventListener("submit", event => {
+  event.preventDefault();
+  void performSearch();
+});
+searchFilters.forEach(filter => filter.addEventListener("change", () => void performSearch()));
+
 function renderSkills(skills) {
   if (!skills?.length) return `<p class="empty-note">No skills listed yet.</p>`;
   const groups = new Map();
@@ -51,7 +145,7 @@ function renderSkills(skills) {
   return `<div class="skills-grid">${Array.from(groups, ([category, items]) => `
     <div class="skill-group">
       <h3>${escapeHtml(category)}</h3>
-      <ul class="skill-list">${items.map(skill => `<li>${escapeHtml(skill.name)}</li>`).join("")}</ul>
+      <ul class="skill-list">${items.map(skill => `<li><a href="/search?q=${encodeURIComponent(skill.name)}">${escapeHtml(skill.name)}</a></li>`).join("")}</ul>
     </div>`).join("")}</div>`;
 }
 
@@ -73,7 +167,7 @@ function renderProjects(projects) {
       <span class="project-number">${String(index + 1).padStart(2, "0")}</span>
       <div>
         <p class="eyebrow">${escapeHtml(project.organization || "Independent project")}${project.role ? ` <span>/</span> ${escapeHtml(project.role)}` : ""}</p>
-        <h3>${escapeHtml(project.title)}</h3>
+        <h3><a class="project-title-link" href="/project/${encodeURIComponent(project.slug)}">${escapeHtml(project.title)} <span aria-hidden="true">↗</span></a></h3>
         <p class="project-summary">${escapeHtml(project.summary)}</p>
         ${project.description ? `<p class="project-description">${escapeHtml(project.description)}</p>` : ""}
         <p class="project-dates">${formatDate(project.startDate)} — ${formatDate(project.endDate)}</p>
@@ -111,10 +205,7 @@ function renderProfile(profile) {
   const location = profile.location
     ? `<p class="location"><span aria-hidden="true">⌖</span> ${escapeHtml(profile.location)}</p>`
     : "";
-  const imageUrl = safeUrl(profile.profileImageUrl);
-  const avatar = imageUrl
-    ? `<img class="avatar" src="${escapeHtml(imageUrl)}" alt="" onerror="this.hidden=true">`
-    : `<div class="avatar avatar-placeholder" aria-hidden="true">${escapeHtml(profile.displayName.slice(0, 1).toUpperCase())}</div>`;
+  const avatar = `<img class="avatar" src="/api/portfolios/${profile.id}/avatar" alt="Pixel avatar for ${escapeHtml(profile.displayName)}">`;
 
   portfolioRoot.innerHTML = `
     <section id="top" class="hero">
@@ -153,48 +244,100 @@ function renderProfile(profile) {
 }
 
 async function loadProfile(profileKey) {
-  profilePicker.hidden = false;
-  profileKeyInput.value = profileKey;
-  statusMessage.hidden = false;
+  searchPage.hidden = true;
+  detailStatus.hidden = false;
   portfolioRoot.hidden = true;
-  statusMessage.textContent = "Loading profile…";
+  detailStatus.textContent = "Loading profile…";
 
   try {
     const response = await fetch(`/api/portfolios/${encodeURIComponent(profileKey)}`, {
       headers: { Accept: "application/json" }
     });
     if (response.status === 404) {
-      statusMessage.textContent = `No profile was found for “${profileKey}”.`;
+      detailStatus.textContent = `No profile was found for “${profileKey}”. Browse other profiles in the <a href="/search?type=profiles">directory</a>.`;
       return;
     }
     if (!response.ok) throw new Error(`Request failed (${response.status}).`);
     renderProfile(await response.json());
-    statusMessage.hidden = true;
-    document.title = `${profileKeyInput.value} · Portfolio`;
+    detailStatus.hidden = true;
+    document.title = `${profileKey} · Portfolio`;
   } catch (error) {
-    statusMessage.textContent = `Could not load this profile. ${error.message}`;
+    detailStatus.textContent = `Could not load this profile. ${error.message}`;
   }
 }
 
-profilePicker.addEventListener("submit", event => {
-  event.preventDefault();
-  const profileKey = profileKeyInput.value.trim();
-  if (!profileKey) return;
-  window.location.assign(`/profile/${encodeURIComponent(profileKey)}`);
-});
+function renderProject(project) {
+  const skills = project.skills?.length
+    ? `<ul class="tag-list">${project.skills.map(skill => `<li><a href="/search?q=${encodeURIComponent(skill.name)}">${escapeHtml(skill.name)}</a></li>`).join("")}</ul>`
+    : `<p class="empty-note">No technologies listed yet.</p>`;
+  const profiles = project.profiles?.length
+    ? `<ul class="related-profiles">${project.profiles.map(profile => `<li><a href="/profile/${profile.id}"><img class="related-avatar" src="${escapeHtml(profile.avatarUrl)}" alt="">${escapeHtml(profile.displayName)}${profile.role ? ` <span>/ ${escapeHtml(profile.role)}</span>` : ""} ↗</a></li>`).join("")}</ul>`
+    : `<p class="empty-note">No profiles linked to this project yet.</p>`;
+  const externalLinks = [
+    project.demoUrl && safeUrl(project.demoUrl) ? `<a class="primary-link" href="${escapeHtml(safeUrl(project.demoUrl))}" target="_blank" rel="noopener noreferrer">Open live demo ↗</a>` : "",
+    project.sourceUrl && safeUrl(project.sourceUrl) ? `<a class="text-link" href="${escapeHtml(safeUrl(project.sourceUrl))}" target="_blank" rel="noopener noreferrer">View source ↗</a>` : ""
+  ].filter(Boolean).join("");
+
+  projectRoot.innerHTML = `
+    <a class="back-link" href="/search?type=projects">← Back to project results</a>
+    <section class="project-hero">
+      <p class="command"><span>$</span> project --slug ${escapeHtml(project.slug)}</p>
+      <h1>${escapeHtml(project.title)}<span>.</span></h1>
+      <p class="project-summary">${escapeHtml(project.summary)}</p>
+      ${externalLinks ? `<div class="hero-actions">${externalLinks}</div>` : ""}
+    </section>
+    ${section("01", "About this project", "about", project.description
+      ? `<p class="project-description project-long-description">${escapeHtml(project.description)}</p>`
+      : `<p class="empty-note">No additional description available.</p>`)}
+    ${section("02", "Technologies", "skills", skills)}
+    ${section("03", "People", "profiles", profiles)}
+    <div class="profile-footer"><span class="mono">PROJECT / ${String(project.id).padStart(3, "0")}</span><a href="/search">Explore the directory ↗</a></div>`;
+  projectRoot.hidden = false;
+}
+
+async function loadProject(slug) {
+  searchPage.hidden = true;
+  detailStatus.hidden = false;
+  projectRoot.hidden = true;
+  detailStatus.textContent = "Loading project…";
+  try {
+    const response = await fetch(`/api/projects/${encodeURIComponent(slug)}`, {
+      headers: { Accept: "application/json" }
+    });
+    if (response.status === 404) {
+      detailStatus.textContent = `No project was found for “${slug}”. Browse more in the directory.`;
+      return;
+    }
+    if (!response.ok) throw new Error(`Request failed (${response.status}).`);
+    const project = await response.json();
+    renderProject(project);
+    detailStatus.hidden = true;
+    document.title = `${project.title} · Portfolio project`;
+  } catch (error) {
+    detailStatus.textContent = `Could not load this project. ${error.message}`;
+  }
+}
 
 const routeMatch = window.location.pathname.match(/^\/profile\/([^/]+)\/?$/);
+const projectRouteMatch = window.location.pathname.match(/^\/project\/([^/]+)\/?$/);
 if (routeMatch) {
   let profileKey = routeMatch[1];
-  let validProfileKey = true;
   try {
     profileKey = decodeURIComponent(profileKey);
   } catch {
-    statusMessage.textContent = "The profile key in this URL is invalid.";
-    profilePicker.hidden = true;
-    validProfileKey = false;
+    detailStatus.hidden = false;
+    detailStatus.textContent = "The profile key in this URL is invalid.";
   }
-  if (validProfileKey) loadProfile(profileKey);
+  if (detailStatus.hidden) void loadProfile(profileKey);
+} else if (projectRouteMatch) {
+  let projectSlug = projectRouteMatch[1];
+  try {
+    projectSlug = decodeURIComponent(projectSlug);
+    void loadProject(projectSlug);
+  } catch {
+    detailStatus.hidden = false;
+    detailStatus.textContent = "The project key in this URL is invalid.";
+  }
 } else {
-  profileKeyInput.focus();
+  loadSearchFromUrl();
 }
