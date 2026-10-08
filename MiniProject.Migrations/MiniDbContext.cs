@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MiniProject.Migrations.Entities;
+using MiniProject.Migrations.SeedData;
 
 namespace MiniProject.Migrations;
 
@@ -12,8 +13,10 @@ public class MiniDbContext : DbContext
 
     public DbSet<PortfolioProfile> Profiles => Set<PortfolioProfile>();
     public DbSet<PortfolioProject> Projects => Set<PortfolioProject>();
+    public DbSet<ProfileProject> ProfileProjects => Set<ProfileProject>();
     public DbSet<PortfolioExperience> Experiences => Set<PortfolioExperience>();
     public DbSet<PortfolioSkill> Skills => Set<PortfolioSkill>();
+    public DbSet<ProfileSkill> ProfileSkills => Set<ProfileSkill>();
     public DbSet<ProjectSkill> ProjectSkills => Set<ProjectSkill>();
     public DbSet<PortfolioSocialLink> SocialLinks => Set<PortfolioSocialLink>();
 
@@ -53,30 +56,46 @@ public class MiniDbContext : DbContext
 
         modelBuilder.Entity<PortfolioProject>(entity =>
         {
-            entity.ToTable("PortfolioProjects", table =>
-            {
-                table.HasCheckConstraint(
-                    "CK_PortfolioProjects_DateRange",
-                    "[EndDate] IS NULL OR [StartDate] IS NULL OR [EndDate] >= [StartDate]");
-                table.HasCheckConstraint("CK_PortfolioProjects_DisplayOrder", "[DisplayOrder] >= 0");
-            });
+            entity.ToTable("PortfolioProjects");
             entity.HasKey(project => project.Id);
             entity.Property(project => project.Title).HasMaxLength(200).IsRequired();
             entity.Property(project => project.Slug).HasMaxLength(220).IsRequired();
             entity.Property(project => project.Summary).HasMaxLength(500).IsRequired();
             entity.Property(project => project.Description).HasMaxLength(8000);
-            entity.Property(project => project.Role).HasMaxLength(160);
-            entity.Property(project => project.Organization).HasMaxLength(200);
             entity.Property(project => project.DemoUrl).HasMaxLength(2048);
             entity.Property(project => project.SourceUrl).HasMaxLength(2048);
-            entity.Property(project => project.StartDate).HasColumnType("date");
-            entity.Property(project => project.EndDate).HasColumnType("date");
-            entity.HasIndex(project => new { project.ProfileId, project.Slug }).IsUnique();
-            entity.HasIndex(project => new { project.ProfileId, project.IsFeatured, project.DisplayOrder });
+            entity.HasIndex(project => project.Slug).IsUnique();
 
             entity.HasMany(project => project.ProjectSkills)
                 .WithOne(projectSkill => projectSkill.Project)
                 .HasForeignKey(projectSkill => projectSkill.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ProfileProject>(entity =>
+        {
+            entity.ToTable("ProfileProjects", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_ProfileProjects_DateRange",
+                    "[EndDate] IS NULL OR [StartDate] IS NULL OR [EndDate] >= [StartDate]");
+                table.HasCheckConstraint("CK_ProfileProjects_DisplayOrder", "[DisplayOrder] >= 0");
+            });
+            entity.HasKey(profileProject => new { profileProject.ProfileId, profileProject.ProjectId });
+            entity.Property(profileProject => profileProject.Role).HasMaxLength(160);
+            entity.Property(profileProject => profileProject.Organization).HasMaxLength(200);
+            entity.Property(profileProject => profileProject.StartDate).HasColumnType("date");
+            entity.Property(profileProject => profileProject.EndDate).HasColumnType("date");
+            entity.HasIndex(profileProject => new
+            {
+                profileProject.ProfileId,
+                profileProject.IsFeatured,
+                profileProject.DisplayOrder
+            });
+
+            entity.HasOne(profileProject => profileProject.Project)
+                .WithMany(project => project.Profiles)
+                .HasForeignKey(profileProject => profileProject.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -103,24 +122,34 @@ public class MiniDbContext : DbContext
 
         modelBuilder.Entity<PortfolioSkill>(entity =>
         {
-            entity.ToTable("PortfolioSkills", table =>
-                table.HasCheckConstraint("CK_PortfolioSkills_DisplayOrder", "[DisplayOrder] >= 0"));
+            entity.ToTable("PortfolioSkills");
             entity.HasKey(skill => skill.Id);
             entity.Property(skill => skill.Name).HasMaxLength(100).IsRequired();
             entity.Property(skill => skill.Category).HasMaxLength(80).IsRequired();
-            entity.HasIndex(skill => new { skill.ProfileId, skill.Name }).IsUnique();
-            entity.HasIndex(skill => new { skill.ProfileId, skill.Category, skill.DisplayOrder });
+            entity.HasIndex(skill => skill.Name).IsUnique();
 
-            entity.HasMany(skill => skill.ProjectSkills)
-                .WithOne(projectSkill => projectSkill.Skill)
-                .HasForeignKey(projectSkill => projectSkill.SkillId)
-                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasMany(skill => skill.Profiles)
+                .WithOne(profileSkill => profileSkill.Skill)
+                .HasForeignKey(profileSkill => profileSkill.SkillId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ProfileSkill>(entity =>
+        {
+            entity.ToTable("ProfileSkills", table =>
+                table.HasCheckConstraint("CK_ProfileSkills_DisplayOrder", "[DisplayOrder] >= 0"));
+            entity.HasKey(profileSkill => new { profileSkill.ProfileId, profileSkill.SkillId });
+            entity.HasIndex(profileSkill => new { profileSkill.ProfileId, profileSkill.DisplayOrder });
         });
 
         modelBuilder.Entity<ProjectSkill>(entity =>
         {
             entity.ToTable("ProjectSkills");
             entity.HasKey(projectSkill => new { projectSkill.ProjectId, projectSkill.SkillId });
+            entity.HasOne(projectSkill => projectSkill.Skill)
+                .WithMany(skill => skill.ProjectSkills)
+                .HasForeignKey(projectSkill => projectSkill.SkillId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<PortfolioSocialLink>(entity =>
@@ -133,5 +162,7 @@ public class MiniDbContext : DbContext
             entity.HasIndex(link => new { link.ProfileId, link.Label }).IsUnique();
             entity.HasIndex(link => new { link.ProfileId, link.DisplayOrder });
         });
+
+        modelBuilder.HasPortfolioSeedData();
     }
 }

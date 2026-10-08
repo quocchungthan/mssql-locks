@@ -11,8 +11,8 @@ public class PortfolioProfile
     public string? ProfileImageUrl { get; set; }
     public string? ResumeUrl { get; set; }
 
-    public ICollection<PortfolioProject> Projects { get; set; } = new List<PortfolioProject>();
+    public ICollection<ProfileProject> Projects { get; set; } = new List<ProfileProject>();
     public ICollection<PortfolioExperience> Experiences { get; set; } = new List<PortfolioExperience>();
-    public ICollection<PortfolioSkill> Skills { get; set; } = new List<PortfolioSkill>();
+    public ICollection<ProfileSkill> Skills { get; set; } = new List<ProfileSkill>();
     public ICollection<PortfolioSocialLink> SocialLinks { get; set; } = new List<PortfolioSocialLink>();
 }
