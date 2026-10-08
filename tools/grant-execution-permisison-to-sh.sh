@@ -1,0 +1,1 @@
+chmod +x ./tools/*.sh

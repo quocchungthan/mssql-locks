@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MiniProject.Migrations/MiniProject.Migrations.csproj" />
+  <Project Path="MiniProject.Playground/MiniProject.Playground.csproj" />
+</Solution>

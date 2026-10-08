@@ -1,0 +1,11 @@
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    container_name: mssql
+    environment:
+      SA_PASSWORD: ${SA_PASSWORD:?"Please set the SA_PASSWORD environment variable in the .env file."}
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - ./runtime/mssql_data:/var/opt/mssql
