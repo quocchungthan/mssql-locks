@@ -18,6 +18,7 @@
         <a class="nav-link" href="/search?type=profiles">Profiles</a>
         <a class="nav-link" href="/search?type=projects">Projects</a>
         <a class="nav-link" href="/search?type=skills">Skills</a>
+        <a class="nav-link" href="/insights">Talent market</a>
       </nav>
     </header>
     <main id="main" class="page-width">
@@ -45,6 +46,29 @@
         </form>
         <p id="status" class="status" role="status" aria-live="polite">Loading the directory…</p>
         <section id="search-results" aria-label="Search results" hidden></section>
+      </section>
+      <section id="insights-page" class="insights-page" hidden>
+        <div class="directory-hero">
+          <p class="command"><span>$</span> explore --talent-market</p>
+          <h1>Where the skills are.<br><span>Who is hiring how.</span></h1>
+          <p class="directory-intro">Every distinct skill × location × company × role × contract × work-mode segment, ranked by candidate count. Run <code>seed-bulk</code> in the Playground console to grow the dataset, then watch the SQL log.</p>
+        </div>
+        <form id="insights-form" class="search-form insights-form">
+          <div class="search-command">
+            <span class="search-prompt" aria-hidden="true">›</span>
+            <label class="sr-only" for="insights-query">Filter by skill, company, or location</label>
+            <input id="insights-query" name="q" type="search" maxlength="100" autocomplete="off" placeholder="Skill, company, role or location — accents optional (nguyen, ha noi)…">
+            <button type="submit">Explore <span aria-hidden="true">↵</span></button>
+          </div>
+          <div class="insights-filters">
+            <label>Category<select name="category"><option value="">All</option></select></label>
+            <label>Location<select name="location"><option value="">All</option></select></label>
+            <label>Employment<select name="employmentType"><option value="">All</option></select></label>
+            <label>Work mode<select name="workMode"><option value="">All</option></select></label>
+          </div>
+        </form>
+        <p id="insights-status" class="status" role="status" aria-live="polite"></p>
+        <section id="insights-results" aria-label="Talent market segments" hidden></section>
       </section>
       <p id="detail-status" class="status" role="status" aria-live="polite" hidden></p>
       <div id="portfolio" hidden></div>

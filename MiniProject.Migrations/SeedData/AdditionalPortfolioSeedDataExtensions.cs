@@ -114,6 +114,8 @@ internal static class AdditionalPortfolioSeedDataExtensions
             experiences.Add(new PortfolioExperience
             {
                 Id = 2000 + index * 2,
+                EmploymentType = (EmploymentType)(index % 5),
+                WorkMode = (WorkMode)(index % 3),
                 ProfileId = profileId,
                 Company = data.CurrentCompany,
                 JobTitle = data.CurrentRole,
@@ -127,6 +129,8 @@ internal static class AdditionalPortfolioSeedDataExtensions
             experiences.Add(new PortfolioExperience
             {
                 Id = 2001 + index * 2,
+                EmploymentType = (EmploymentType)((index + 2) % 5),
+                WorkMode = (WorkMode)((index + 1) % 3),
                 ProfileId = profileId,
                 Company = data.PreviousCompany,
                 JobTitle = data.PreviousRole,

@@ -116,6 +116,14 @@ public class MiniDbContext : DbContext
             entity.Property(experience => experience.Company).HasMaxLength(200).IsRequired();
             entity.Property(experience => experience.JobTitle).HasMaxLength(160).IsRequired();
             entity.Property(experience => experience.Description).HasMaxLength(4000);
+            entity.Property(experience => experience.EmploymentType)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+            entity.Property(experience => experience.WorkMode)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
             entity.Property(experience => experience.StartDate).HasColumnType("date").IsRequired();
             entity.Property(experience => experience.EndDate).HasColumnType("date");
             entity.HasIndex(experience => new { experience.ProfileId, experience.DisplayOrder });

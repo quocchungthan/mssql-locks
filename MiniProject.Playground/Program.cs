@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MiniProject.ComplexLogicInMiddle;
 using MiniProject.Migrations;
+using MiniProject.Migrations.Entities;
 
 namespace MiniProject.Playground;
 
@@ -55,10 +56,14 @@ internal static class Program
                 .UseSqlServer(sqlConnectionString)
                 .LogTo(
                     Console.WriteLine,
-                    new[] { DbLoggerCategory.Database.Command.Name },
-                    LogLevel.Information));
+                    (eventId, level) =>
+                        level >= LogLevel.Information &&
+                        eventId.Name?.StartsWith(DbLoggerCategory.Database.Command.Name, StringComparison.Ordinal) == true &&
+                        !EfCommandLogging.IsSuppressed));
         builder.Services.AddScoped<IPortfolioService, PortfolioService>();
         builder.Services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
+        builder.Services.AddScoped<ITalentInsightsService, TalentInsightsService>();
+        builder.Services.AddScoped<ITalentDataGenerator, TalentDataGenerator>();
         builder.Services.AddHostedService<InteractiveConsoleService>();
 
         var app = builder.Build();
@@ -73,6 +78,8 @@ internal static class Program
             Results.File(profilePagePath, "text/html; charset=utf-8"));
         app.MapGet("/search", () =>
             Results.File(profilePagePath, "text/html; charset=utf-8"));
+        app.MapGet("/insights", () =>
+            Results.File(profilePagePath, "text/html; charset=utf-8"));
 
         app.MapGet("/health", async (
             IDatabaseHealthService healthService,
@@ -85,6 +92,9 @@ internal static class Program
         app.MapGet("/api/portfolios/{profileId:int}", GetPortfolioAsync);
         app.MapGet("/api/projects/{slug}", GetProjectAsync);
         app.MapGet("/api/search", SearchAsync);
+        app.MapGet("/api/insights/facets", (ITalentInsightsService insights, CancellationToken cancellationToken) =>
+            insights.GetFacetsAsync(cancellationToken));
+        app.MapGet("/api/insights/talent-market", GetTalentMarketAsync);
 
         await app.RunAsync();
     }
@@ -165,6 +175,59 @@ internal static class Program
             total = results.Count,
             results
         });
+    }
+
+    private static async Task<IResult> GetTalentMarketAsync(
+        string? q,
+        string? category,
+        string? location,
+        string? employmentType,
+        string? workMode,
+        int? page,
+        int? pageSize,
+        ITalentInsightsService insights,
+        CancellationToken cancellationToken)
+    {
+        if (q?.Trim().Length > 100 || category?.Length > 100 || location?.Length > 160)
+        {
+            return Results.BadRequest(new { error = "Filter values are too long." });
+        }
+
+        EmploymentType? parsedEmploymentType = null;
+        if (!string.IsNullOrWhiteSpace(employmentType))
+        {
+            if (!Enum.TryParse<EmploymentType>(employmentType, ignoreCase: true, out var value) ||
+                !Enum.IsDefined(value))
+            {
+                return Results.BadRequest(new { error = "Unknown employmentType." });
+            }
+
+            parsedEmploymentType = value;
+        }
+
+        WorkMode? parsedWorkMode = null;
+        if (!string.IsNullOrWhiteSpace(workMode))
+        {
+            if (!Enum.TryParse<WorkMode>(workMode, ignoreCase: true, out var value) || !Enum.IsDefined(value))
+            {
+                return Results.BadRequest(new { error = "Unknown workMode." });
+            }
+
+            parsedWorkMode = value;
+        }
+
+        var result = await insights.GetTalentMarketAsync(
+            new TalentMarketFilter(
+                q,
+                category,
+                location,
+                parsedEmploymentType,
+                parsedWorkMode,
+                page ?? 1,
+                pageSize ?? 20),
+            cancellationToken);
+
+        return Results.Ok(result);
     }
 
     private static Dictionary<string, string> ReadDotEnvValues()

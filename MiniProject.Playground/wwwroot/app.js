@@ -318,6 +318,119 @@ async function loadProject(slug) {
   }
 }
 
+const insightsPage = document.querySelector("#insights-page");
+const insightsForm = document.querySelector("#insights-form");
+const insightsStatus = document.querySelector("#insights-status");
+const insightsResults = document.querySelector("#insights-results");
+const insightsFilterNames = ["category", "location", "employmentType", "workMode"];
+const insightsPageSize = 20;
+
+function fillSelect(select, values, selected) {
+  select.innerHTML = `<option value="">All</option>` + values
+    .map(value => `<option value="${escapeHtml(value)}"${value.toLowerCase() === (selected || "").toLowerCase() ? " selected" : ""}>${escapeHtml(value)}</option>`)
+    .join("");
+}
+
+function insightsQueryFromForm(page) {
+  const params = new URLSearchParams();
+  const q = insightsForm.elements.q.value.trim();
+  if (q) params.set("q", q);
+  for (const name of insightsFilterNames) {
+    const value = insightsForm.elements[name].value;
+    if (value) params.set(name, value);
+  }
+  if (page > 1) params.set("page", String(page));
+  return params;
+}
+
+function segmentRow(segment) {
+  const skillHref = `/search?q=${encodeURIComponent(segment.skill)}&type=skills`;
+  const locationHref = `/insights?location=${encodeURIComponent(segment.location)}`;
+  const companyHref = `/insights?q=${encodeURIComponent(segment.company)}`;
+  const candidates = segment.sampleCandidates.map(candidate => `<a href="/profile/${encodeURIComponent(candidate.profileId)}">
+      <img src="${escapeHtml(safeUrl(candidate.avatarUrl) || "")}" alt="" loading="lazy">${escapeHtml(candidate.displayName)}</a>`).join("");
+  return `<tr>
+    <td><span class="pill">${escapeHtml(segment.category)}</span><br><a href="${escapeHtml(skillHref)}">${escapeHtml(segment.skill)}</a></td>
+    <td><a href="${escapeHtml(locationHref)}">${escapeHtml(segment.location || "—")}</a></td>
+    <td><a href="${escapeHtml(companyHref)}">${escapeHtml(segment.company)}</a><br><span class="muted">${escapeHtml(segment.jobTitle)}</span></td>
+    <td><span class="pill">${escapeHtml(segment.employmentType)}</span> <span class="pill">${escapeHtml(segment.workMode)}</span></td>
+    <td class="count">${segment.candidateCount}</td>
+    <td><div class="candidate-stack">${candidates}</div></td>
+  </tr>`;
+}
+
+function renderInsights(payload) {
+  const totalPages = Math.max(1, Math.ceil(payload.totalSegments / payload.pageSize));
+  insightsResults.innerHTML = `
+    <div class="insights-diagnostics" title="Measured inside TalentInsightsService">
+      <span>⏱ ${payload.diagnostics.elapsedMilliseconds} ms</span>
+      <span>⇄ ${payload.diagnostics.databaseRoundTrips} DB round trips</span>
+      <span>Σ ${payload.totalSegments} distinct segments</span>
+    </div>
+    ${payload.segments.length ? `<div class="insights-table-wrap"><table class="insights-table">
+      <thead><tr><th>Skill</th><th>Location</th><th>Company / role</th><th>Contract</th><th>Candidates ↓</th><th>Sample</th></tr></thead>
+      <tbody>${payload.segments.map(segmentRow).join("")}</tbody>
+    </table></div>` : `<p class="no-results">No segments match. Loosen a filter or <a href="/insights">reset</a>.</p>`}
+    <div class="pager">
+      <button type="button" data-page="${payload.page - 1}" ${payload.page <= 1 ? "disabled" : ""}>← Prev</button>
+      <span>Page ${payload.page} / ${totalPages}</span>
+      <button type="button" data-page="${payload.page + 1}" ${payload.page >= totalPages ? "disabled" : ""}>Next →</button>
+    </div>`;
+  insightsResults.hidden = false;
+}
+
+async function exploreTalentMarket(page = 1, { updateHistory = true } = {}) {
+  const pageQuery = insightsQueryFromForm(page);
+  if (updateHistory) history.pushState(null, "", `/insights${pageQuery.size ? `?${pageQuery}` : ""}`);
+  const apiQuery = new URLSearchParams(pageQuery);
+  apiQuery.set("page", String(page));
+  apiQuery.set("pageSize", String(insightsPageSize));
+  insightsStatus.hidden = false;
+  insightsStatus.textContent = "Crunching distinct segments… (check the console for SQL timings)";
+  try {
+    const response = await fetch(`/api/insights/talent-market?${apiQuery}`, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`Request failed (${response.status}).`);
+    renderInsights(await response.json());
+    insightsStatus.hidden = true;
+  } catch (error) {
+    insightsStatus.textContent = `Could not load the talent market. ${error.message}`;
+  }
+}
+
+async function loadInsights() {
+  searchPage.hidden = true;
+  insightsPage.hidden = false;
+  document.title = "Talent market · Portfolio directory";
+  const params = new URLSearchParams(window.location.search);
+  insightsForm.elements.q.value = params.get("q") || "";
+  insightsStatus.textContent = "Loading filters…";
+  try {
+    const response = await fetch("/api/insights/facets", { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`Request failed (${response.status}).`);
+    const facets = await response.json();
+    fillSelect(insightsForm.elements.category, facets.categories, params.get("category"));
+    fillSelect(insightsForm.elements.location, facets.locations, params.get("location"));
+    fillSelect(insightsForm.elements.employmentType, facets.employmentTypes, params.get("employmentType"));
+    fillSelect(insightsForm.elements.workMode, facets.workModes, params.get("workMode"));
+  } catch (error) {
+    insightsStatus.textContent = `Could not load filters. ${error.message}`;
+    return;
+  }
+  const page = Math.max(1, Number.parseInt(params.get("page") || "1", 10) || 1);
+  void exploreTalentMarket(page, { updateHistory: false });
+}
+
+insightsForm.addEventListener("submit", event => {
+  event.preventDefault();
+  void exploreTalentMarket();
+});
+insightsFilterNames.forEach(name =>
+  insightsForm.elements[name].addEventListener("change", () => void exploreTalentMarket()));
+insightsResults.addEventListener("click", event => {
+  const button = event.target.closest("button[data-page]");
+  if (button && !button.disabled) void exploreTalentMarket(Number(button.dataset.page));
+});
+
 const routeMatch = window.location.pathname.match(/^\/profile\/([^/]+)\/?$/);
 const projectRouteMatch = window.location.pathname.match(/^\/project\/([^/]+)\/?$/);
 if (routeMatch) {
@@ -338,6 +451,8 @@ if (routeMatch) {
     detailStatus.hidden = false;
     detailStatus.textContent = "The project key in this URL is invalid.";
   }
+} else if (/^\/insights\/?$/.test(window.location.pathname)) {
+  void loadInsights();
 } else {
   loadSearchFromUrl();
 }

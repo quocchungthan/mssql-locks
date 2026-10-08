@@ -131,6 +131,8 @@ public static class PortfolioSeedDataExtensions
             new PortfolioExperience
             {
                 Id = 201,
+                EmploymentType = EmploymentType.FullTime,
+                WorkMode = WorkMode.Hybrid,
                 ProfileId = 1,
                 Company = "Northstar Labs",
                 JobTitle = "Software Engineer",
@@ -144,6 +146,8 @@ public static class PortfolioSeedDataExtensions
             new PortfolioExperience
             {
                 Id = 202,
+                EmploymentType = EmploymentType.Contract,
+                WorkMode = WorkMode.OnSite,
                 ProfileId = 1,
                 Company = "Civic Works",
                 JobTitle = "Software Developer",
@@ -157,6 +161,8 @@ public static class PortfolioSeedDataExtensions
             new PortfolioExperience
             {
                 Id = 203,
+                EmploymentType = EmploymentType.FullTime,
+                WorkMode = WorkMode.Remote,
                 ProfileId = 2,
                 Company = "Brightside Studio",
                 JobTitle = "Full-stack Developer",
@@ -170,6 +176,8 @@ public static class PortfolioSeedDataExtensions
             new PortfolioExperience
             {
                 Id = 204,
+                EmploymentType = EmploymentType.PartTime,
+                WorkMode = WorkMode.Hybrid,
                 ProfileId = 2,
                 Company = "Cloudline",
                 JobTitle = "Associate Developer",
