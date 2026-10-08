@@ -1,0 +1,1 @@
+dotnet add path/to/YourProject.csproj package Package.Name

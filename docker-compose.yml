@@ -8,4 +8,8 @@ services:
     ports:
       - "1433:1433"
     volumes:
-      - ./runtime/mssql_data:/var/opt/mssql
+      - mssql-data:/var/opt/mssql
+
+# At the top level of docker-compose.yml:
+volumes:
+  mssql-data:
