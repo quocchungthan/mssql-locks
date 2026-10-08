@@ -13,11 +13,13 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../MiniProject.ComplexLogicInMiddle/MiniProject.ComplexLogicInMiddle.csproj" />
     <ProjectReference Include="../MiniProject.Migrations/MiniProject.Migrations.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="wwwroot/**/*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

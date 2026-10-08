@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101314">
+    <meta name="description" content="A portfolio profile">
+    <title>Portfolio</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <nav class="page-width nav" aria-label="Primary">
+        <a class="brand" href="/">⌘ <span>portfolio<span class="muted"> / profile</span></span></a>
+        <a class="nav-link" href="#projects">Projects</a>
+        <a class="nav-link" href="#experience">Experience</a>
+        <a class="nav-link" href="#skills">Skills</a>
+      </nav>
+    </header>
+    <main id="main" class="page-width">
+      <form id="profile-picker" class="profile-picker">
+        <label for="profile-key">Profile ID</label>
+        <input id="profile-key" name="profileKey" inputmode="numeric" autocomplete="off" placeholder="e.g. 1" required>
+        <button type="submit">Open profile <span aria-hidden="true">↗</span></button>
+      </form>
+      <p id="status" class="status" role="status" aria-live="polite">Enter a profile ID to view its portfolio.</p>
+      <div id="portfolio" hidden></div>
+    </main>
+    <footer class="page-width footer">
+      <span class="mono">PORTFOLIO API</span>
+      <a href="#main">Back to top ↑</a>
+    </footer>
+  </body>
+</html>

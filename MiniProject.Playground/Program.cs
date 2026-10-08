@@ -1,63 +1,101 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using MiniProject.ComplexLogicInMiddle;
 using MiniProject.Migrations;
 
 namespace MiniProject.Playground;
 
 internal static class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        using var host = CreateHostBuilder(args).Build();
-        using var scope = host.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<MiniDbContext>();
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            Args = args,
+            WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
+        });
+        builder.Configuration.AddJsonFile(
+            Path.Combine(AppContext.BaseDirectory, "appsettings.json"),
+            optional: false,
+            reloadOnChange: false);
 
-        Console.WriteLine($"EF Core provider: {dbContext.Database.ProviderName}");
+        var connectionString = builder.Configuration.GetConnectionString("Default");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "Set ConnectionStrings:Default in appsettings.json.");
+        }
+
+        var saPassword = Environment.GetEnvironmentVariable("SA_PASSWORD");
+        if (saPassword is null)
+        {
+            ReadDotEnvValues().TryGetValue("SA_PASSWORD", out saPassword);
+        }
+
+        if (string.IsNullOrWhiteSpace(saPassword))
+        {
+            throw new InvalidOperationException(
+                "Set SA_PASSWORD in the root .env file or process environment.");
+        }
+
+        var sqlConnectionString = new SqlConnectionStringBuilder(connectionString)
+        {
+            Password = saPassword
+        }.ConnectionString;
+
+        builder.Services.AddDbContext<MiniDbContext>(
+            options => options
+                .UseSqlServer(sqlConnectionString)
+                .LogTo(
+                    Console.WriteLine,
+                    new[] { DbLoggerCategory.Database.Command.Name },
+                    LogLevel.Information));
+        builder.Services.AddScoped<IPortfolioService, PortfolioService>();
+        builder.Services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
+        builder.Services.AddHostedService<InteractiveConsoleService>();
+
+        var app = builder.Build();
+
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
+
+        var profilePagePath = Path.Combine(app.Environment.WebRootPath, "index.html");
+        app.MapGet("/profile/{profileKey}", () =>
+            Results.File(profilePagePath, "text/html; charset=utf-8"));
+
+        app.MapGet("/health", async (
+            IDatabaseHealthService healthService,
+            CancellationToken cancellationToken) =>
+            await healthService.CanConnectAsync(cancellationToken)
+                ? Results.Ok(new { status = "Healthy", database = "Connected" })
+                : Results.StatusCode(StatusCodes.Status503ServiceUnavailable));
+
+        app.MapGet("/api/portfolios/{profileId:int}", GetPortfolioAsync);
+
+        await app.RunAsync();
     }
 
-    public static IHostBuilder CreateHostBuilder(string[] args) =>
-        Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((_, configuration) =>
-            {
-                configuration.AddJsonFile(
-                    Path.Combine(AppContext.BaseDirectory, "appsettings.json"),
-                    optional: false,
-                    reloadOnChange: false);
+    private static async Task<IResult> GetPortfolioAsync(
+        int profileId,
+        IPortfolioService portfolioService,
+        CancellationToken cancellationToken)
+    {
+        var profile = await portfolioService.GetByProfileIdAsync(profileId, cancellationToken);
 
-            })
-            .ConfigureServices((context, services) =>
-            {
-                var connectionString = context.Configuration.GetConnectionString("Default");
-                if (string.IsNullOrWhiteSpace(connectionString))
-                {
-                    throw new InvalidOperationException(
-                        "Set ConnectionStrings:Default in appsettings.json.");
-                }
+        if (profile is null)
+        {
+            return Results.NotFound();
+        }
 
-                var saPassword = Environment.GetEnvironmentVariable("SA_PASSWORD");
-                if (saPassword is null)
-                {
-                    ReadDotEnvValues().TryGetValue("SA_PASSWORD", out saPassword);
-                }
-
-                if (string.IsNullOrWhiteSpace(saPassword))
-                {
-                    throw new InvalidOperationException(
-                        "Set SA_PASSWORD in the root .env file or process environment.");
-                }
-
-                var builder = new SqlConnectionStringBuilder(connectionString)
-                {
-                    Password = saPassword
-                };
-                connectionString = builder.ConnectionString;
-
-                services.AddDbContext<MiniDbContext>(
-                    options => options.UseSqlServer(connectionString));
-            });
+        return Results.Ok(profile);
+    }
 
     private static Dictionary<string, string> ReadDotEnvValues()
     {

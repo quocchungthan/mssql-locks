@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../MiniProject.Migrations/MiniProject.Migrations.csproj" />
+  </ItemGroup>
+
 </Project>
