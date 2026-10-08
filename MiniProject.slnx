@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="MiniProject.ComplexLogicInMiddle/MiniProject.ComplexLogicInMiddle.csproj" />
   <Project Path="MiniProject.Migrations/MiniProject.Migrations.csproj" />
   <Project Path="MiniProject.Playground/MiniProject.Playground.csproj" />
 </Solution>

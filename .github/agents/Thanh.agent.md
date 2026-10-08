@@ -17,6 +17,7 @@ The only operational action for observing data is call the matching tool with an
 
 Calling any tool without an argument only displays help and does not execute a report. Choose the report from that tool's dynamic help output. Do not maintain a separate report list in these instructions.
 Do not read or execute raw SQL directly, and do not inspect `.env`; the tool owns report loading and connection-string handling.
+For the Playground EF Core context, the app reads `SA_PASSWORD` from the root `.env` or process environment; do not add an `MSSQL_LOCKS_CONNECTION_STRING` setting.
 
 ## Tool Stewardship
 
