@@ -7,6 +7,8 @@ public sealed class MemoryGrantsWatchState
     private MemoryGrantSnapshot? snapshot;
     private CancellationTokenSource? watchCancellation;
     private TaskCompletionSource changed = CreateSignal();
+    private bool historyClearInProgress;
+    private int activeHistoryWrites;
 
     public WatchObservation Read()
     {
@@ -25,6 +27,11 @@ public sealed class MemoryGrantsWatchState
 
         lock (gate)
         {
+            if (historyClearInProgress)
+            {
+                throw new InvalidOperationException("History is being cleared. Start the watch again in a moment.");
+            }
+
             if (!status.IsRunning)
             {
                 watchCancellation = new CancellationTokenSource();
@@ -91,6 +98,54 @@ public sealed class MemoryGrantsWatchState
             SignalChanged();
             updatedStatus = status;
             return true;
+        }
+    }
+
+    public bool TryBeginHistoryClear()
+    {
+        lock (gate)
+        {
+            if (status.IsRunning || historyClearInProgress || activeHistoryWrites > 0)
+            {
+                return false;
+            }
+
+            historyClearInProgress = true;
+            snapshot = null;
+            SignalChanged();
+            return true;
+        }
+    }
+
+    public bool TryBeginHistoryWrite()
+    {
+        lock (gate)
+        {
+            if (!status.IsRunning || historyClearInProgress)
+            {
+                return false;
+            }
+
+            activeHistoryWrites++;
+            return true;
+        }
+    }
+
+    public void EndHistoryWrite()
+    {
+        lock (gate)
+        {
+            activeHistoryWrites--;
+            SignalChanged();
+        }
+    }
+
+    public void EndHistoryClear()
+    {
+        lock (gate)
+        {
+            historyClearInProgress = false;
+            SignalChanged();
         }
     }
 

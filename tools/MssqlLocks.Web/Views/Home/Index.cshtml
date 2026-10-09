@@ -176,6 +176,35 @@
                     <div class="metric"><span class="metric-label">Granted</span><strong id="granted-count">@(Model.MemoryGrantsSnapshot?.GrantedCount ?? 0)</strong></div>
                     <div class="metric"><span class="metric-label">Rows</span><strong id="rows-count">@(Model.MemoryGrantsSnapshot?.TotalRows ?? 0)</strong></div>
                 </div>
+                <section class="history-report" aria-labelledby="history-title">
+                    <div class="history-heading">
+                        <div>
+                            <h4 id="history-title">History report</h4>
+                            <p id="history-range">Loading saved samples...</p>
+                        </div>
+                        <form asp-controller="Watch" asp-action="ClearMemoryGrantsHistory" method="post" id="clear-memory-grants-history-form" hidden="@Model.MemoryGrantsStatus.IsRunning">
+                            @Html.AntiForgeryToken()
+                            <button class="button button-clear" type="submit">Clear history</button>
+                        </form>
+                    </div>
+                    <div class="history-chart-grid">
+                        <figure class="history-chart">
+                            <figcaption>Semaphore memory (GiB)</figcaption>
+                            <svg id="semaphore-memory-chart" class="chart-svg" viewBox="0 0 900 280" role="img" aria-label="Semaphore available and target memory over time"></svg>
+                            <div class="chart-legend"><span><i class="legend-swatch legend-available"></i>Available</span><span><i class="legend-swatch legend-target"></i>Target</span></div>
+                        </figure>
+                        <figure class="history-chart">
+                            <figcaption>Requested memory (GiB)</figcaption>
+                            <svg id="requested-memory-chart" class="chart-svg" viewBox="0 0 900 280" role="img" aria-label="Waiting and granted requested memory over time"></svg>
+                            <div class="chart-legend"><span><i class="legend-swatch legend-waiting"></i>Waiting</span><span><i class="legend-swatch legend-granted"></i>Granted</span></div>
+                        </figure>
+                        <figure class="history-chart">
+                            <figcaption>Maximum waiting-grant wait (ms)</figcaption>
+                            <svg id="maximum-wait-chart" class="chart-svg" viewBox="0 0 900 280" role="img" aria-label="Maximum wait time for waiting grants over time"></svg>
+                            <div class="chart-legend"><span><i class="legend-swatch legend-wait"></i>Maximum wait</span></div>
+                        </figure>
+                    </div>
+                </section>
                 <div class="table-scroll compact-table" role="region" aria-label="Memory grants values" tabindex="0">
                     <table>
                         <thead id="results-head">

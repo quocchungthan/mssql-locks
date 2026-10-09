@@ -15,6 +15,8 @@ builder.Services.AddSingleton(dmvReportCatalog);
 builder.Services.AddSingleton<IReportSqlSource>(new FileReportSqlSource(dmvReportCatalog.RepositoryRoot));
 builder.Services.AddSingleton<IReportQueryExecutor, SqlReportRunner>();
 builder.Services.AddSingleton<IReportApplicationService, ReportApplicationService>();
+builder.Services.AddSingleton<IMemoryGrantsHistoryStore>(new JsonMemoryGrantsHistoryStore(
+    Path.Combine(dmvReportCatalog.RepositoryRoot, "runtime", "memory-grants-history.jsonl")));
 builder.Services.AddSingleton<MemoryGrantsWatchState>();
 builder.Services.AddSingleton<CapacityWatchState>();
 builder.Services.AddHostedService<MemoryGrantsWatchService>();

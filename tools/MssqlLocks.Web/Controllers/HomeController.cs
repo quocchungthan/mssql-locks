@@ -13,22 +13,32 @@ public class HomeController : Controller
     private readonly CapacityWatchState capacityWatchState;
     private readonly ReportCatalogRegistry reportCatalogs;
     private readonly IReportApplicationService reportApplication;
+    private readonly IMemoryGrantsHistoryStore historyStore;
 
     public HomeController(
         MemoryGrantsWatchState watchState,
         CapacityWatchState capacityWatchState,
         ReportCatalogRegistry reportCatalogs,
-        IReportApplicationService reportApplication)
+        IReportApplicationService reportApplication,
+        IMemoryGrantsHistoryStore historyStore)
     {
         this.watchState = watchState;
         this.capacityWatchState = capacityWatchState;
         this.reportCatalogs = reportCatalogs;
         this.reportApplication = reportApplication;
+        this.historyStore = historyStore;
     }
 
     public IActionResult Index(string? category, string? reportName)
     {
         return View(CreateViewModel(category, reportName, null, null));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> MemoryGrantsHistory(CancellationToken cancellationToken)
+    {
+        var points = await historyStore.ReadAsync(cancellationToken);
+        return Json(points);
     }
 
     [HttpPost]

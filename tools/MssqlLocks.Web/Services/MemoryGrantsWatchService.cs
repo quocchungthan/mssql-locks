@@ -9,10 +9,11 @@ public sealed class MemoryGrantsWatchService(
     IReportApplicationService reportApplication,
     ReportCatalog catalog,
     MemoryGrantsWatchState watchState,
+    IMemoryGrantsHistoryStore historyStore,
     IHubContext<MemoryGrantsHub, IMemoryGrantsWatchClient> hub,
     ILogger<MemoryGrantsWatchService> logger) : BackgroundService
 {
-    private const string ReportFileName = "memory-grants-watch.sql";
+    private const string ReportFileName = "memory-grants-history.sql";
     private const string ConfigurationError = "Connection configuration is unavailable.";
     private readonly ReportDefinition report = catalog.Resolve([ReportFileName]);
 
@@ -44,10 +45,19 @@ public sealed class MemoryGrantsWatchService(
 
                 if (consumer.Snapshot is { } latestSnapshot)
                 {
-                    if (watchState.TryMarkLive(latestSnapshot, out var status))
+                    if (watchState.TryMarkLive(latestSnapshot, out var status)
+                        && watchState.TryBeginHistoryWrite())
                     {
-                        await hub.Clients.All.SnapshotReceived(latestSnapshot);
-                        await hub.Clients.All.StatusChanged(status);
+                        try
+                        {
+                            await historyStore.AppendAsync(latestSnapshot.HistoryPoint, stoppingToken);
+                            await hub.Clients.All.SnapshotReceived(latestSnapshot);
+                            await hub.Clients.All.StatusChanged(status);
+                        }
+                        finally
+                        {
+                            watchState.EndHistoryWrite();
+                        }
                     }
                 }
             }

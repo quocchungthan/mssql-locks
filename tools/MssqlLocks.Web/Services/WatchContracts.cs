@@ -22,7 +22,27 @@ public sealed record MemoryGrantSnapshot(
     long TotalRows,
     int WaitingCount,
     int GrantedCount,
-    bool IsTruncated);
+    bool IsTruncated,
+    MemoryGrantsHistoryPoint HistoryPoint);
+
+public sealed record MemoryGrantsHistoryPoint(
+    DateTimeOffset CapturedAt,
+    double AvailableMemoryKb,
+    double TargetMemoryKb,
+    double WaitingRequestedMemoryKb,
+    double GrantedRequestedMemoryKb,
+    double MaximumWaitTimeMs,
+    double WaiterCount,
+    int GrantObservations,
+    int WaitingGrantObservations,
+    int GrantedGrantObservations);
+
+public interface IMemoryGrantsHistoryStore
+{
+    Task<IReadOnlyList<MemoryGrantsHistoryPoint>> ReadAsync(CancellationToken cancellationToken);
+    Task AppendAsync(MemoryGrantsHistoryPoint point, CancellationToken cancellationToken);
+    Task ClearAsync(CancellationToken cancellationToken);
+}
 
 public sealed record WatchObservation(
     WatchStatus Status,

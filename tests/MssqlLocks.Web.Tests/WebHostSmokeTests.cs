@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace MssqlLocks.Web.Tests;
@@ -20,6 +21,10 @@ public sealed class WebHostSmokeTests(WebApplicationFactory<Program> factory)
         Assert.Contains("Extended Events", html, StringComparison.Ordinal);
         Assert.Contains("top-cpu-plans-costliest-operators-past-24-hours.sql", html, StringComparison.Ordinal);
         Assert.Contains("recent-deadlocks.sql", html, StringComparison.Ordinal);
+        Assert.Contains("semaphore-memory-chart", html, StringComparison.Ordinal);
+        Assert.Contains("requested-memory-chart", html, StringComparison.Ordinal);
+        Assert.Contains("maximum-wait-chart", html, StringComparison.Ordinal);
+        Assert.Contains("Clear history", html, StringComparison.Ordinal);
         Assert.Contains("Watch is stopped", html, StringComparison.Ordinal);
     }
 
@@ -41,5 +46,18 @@ public sealed class WebHostSmokeTests(WebApplicationFactory<Program> factory)
         var response = await client.PostAsync("/hubs/capacity/negotiate?negotiateVersion=1", null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task HistoryEndpointReturnsAnEmptyHistoryWithoutDatabaseAccess()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/Home/MemoryGrantsHistory");
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal(JsonValueKind.Array, document.RootElement.ValueKind);
     }
 }

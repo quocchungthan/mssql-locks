@@ -8,6 +8,7 @@ namespace MssqlLocks.Web.Controllers;
 public sealed class WatchController(
     MemoryGrantsWatchState watchState,
     CapacityWatchState capacityWatchState,
+    IMemoryGrantsHistoryStore historyStore,
     IHubContext<MemoryGrantsHub, IMemoryGrantsWatchClient> hub,
     IHubContext<CapacityHub, ICapacityWatchClient> capacityHub) : Controller
 {
@@ -20,7 +21,15 @@ public sealed class WatchController(
             return BadRequest();
         }
 
-        var status = watchState.Start(intervalSeconds);
+        WatchStatus status;
+        try
+        {
+            status = watchState.Start(intervalSeconds);
+        }
+        catch (InvalidOperationException)
+        {
+            return Conflict();
+        }
         await hub.Clients.All.StatusChanged(status);
         return RedirectToAction("Index", "Home");
     }
@@ -50,5 +59,26 @@ public sealed class WatchController(
         var status = capacityWatchState.Stop();
         await capacityHub.Clients.All.StatusChanged(status);
         return RedirectToAction("Index", "Home");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearMemoryGrantsHistory(CancellationToken cancellationToken)
+    {
+        if (!watchState.TryBeginHistoryClear())
+        {
+            return Conflict();
+        }
+
+        try
+        {
+            await historyStore.ClearAsync(cancellationToken);
+            await hub.Clients.All.HistoryCleared();
+            return RedirectToAction("Index", "Home");
+        }
+        finally
+        {
+            watchState.EndHistoryClear();
+        }
     }
 }
