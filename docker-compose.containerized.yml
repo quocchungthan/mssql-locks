@@ -1,0 +1,49 @@
+# Standalone project: do not combine with the host-SQL docker-compose.yml.
+name: mssql-locks-containerized
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    environment:
+      SA_PASSWORD: ${SA_PASSWORD:?"Set SA_PASSWORD in the root .env file or environment."}
+      ACCEPT_EULA: "Y"
+    volumes:
+      - sql-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'SQLCMDPASSWORD="$${SA_PASSWORD}" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -l 5 -t 5 -Q "SET NOCOUNT ON; SELECT 1"'
+      interval: 5s
+      timeout: 10s
+      start_period: 30s
+      retries: 24
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SA_PASSWORD: ${SA_PASSWORD:?"Set SA_PASSWORD in the root .env file or environment."}
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      ConnectionStrings__Default: "Server=mssql,1433;Database=PortfolioDb;User Id=sa;Encrypt=True;TrustServerCertificate=True;Connect Timeout=30"
+      Database__ApplyMigrationsOnStartup: "true"
+      Database__BulkSeedProfileCount: "500000"
+      PerformanceLab__Enabled: "true"
+    depends_on:
+      mssql:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5080:8080"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  sql-data:

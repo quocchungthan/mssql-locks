@@ -20,7 +20,7 @@ public interface ITalentDataGenerator
 public sealed class TalentDataGenerator : ITalentDataGenerator
 {
     public const int MaxProfilesPerRun = 1_000_000;
-    private const int ChunkSize = 50_000;
+    public const int ChunkSize = 50_000;
     private const int SkillsPerProfile = 8;
     private const int ExperiencesPerProfile = 4;
 

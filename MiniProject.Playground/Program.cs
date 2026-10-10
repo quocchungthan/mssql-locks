@@ -26,6 +26,9 @@ internal static class Program
             Path.Combine(AppContext.BaseDirectory, "appsettings.json"),
             optional: false,
             reloadOnChange: false);
+        // Keep container/process overrides above the output-directory JSON defaults.
+        builder.Configuration.AddEnvironmentVariables();
+        builder.Configuration.AddCommandLine(args);
 
         var connectionString = builder.Configuration.GetConnectionString("Default");
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -51,6 +54,11 @@ internal static class Program
             Password = saPassword
         }.ConnectionString;
 
+        // EF also emits through the host ILogger pipeline, independently of LogTo below.
+        // Honor the same async-flow suppression there while retaining normal query logs.
+        builder.Logging.AddFilter(
+            DbLoggerCategory.Database.Command.Name,
+            _ => !EfCommandLogging.IsSuppressed);
         builder.Services.AddDbContext<MiniDbContext>(
             options => options
                 .UseSqlServer(sqlConnectionString)
@@ -64,9 +72,12 @@ internal static class Program
         builder.Services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
         builder.Services.AddScoped<ITalentInsightsService, TalentInsightsService>();
         builder.Services.AddScoped<ITalentDataGenerator, TalentDataGenerator>();
+        builder.Services.AddScoped<PortfolioPerformanceLab>();
         builder.Services.AddHostedService<InteractiveConsoleService>();
 
         var app = builder.Build();
+
+        await DatabaseStartup.RunAsync(app);
 
         app.UseDefaultFiles();
         app.UseStaticFiles();
@@ -96,7 +107,52 @@ internal static class Program
             insights.GetFacetsAsync(cancellationToken));
         app.MapGet("/api/insights/talent-market", GetTalentMarketAsync);
 
+        if (builder.Configuration.GetValue<bool>("PerformanceLab:Enabled"))
+        {
+            MapPerformanceLab(app);
+        }
+
         await app.RunAsync();
+    }
+
+    private static void MapPerformanceLab(WebApplication app)
+    {
+        app.MapGet("/api/lab/shortlist", async (
+            int? count,
+            PortfolioPerformanceLab lab,
+            CancellationToken cancellationToken) =>
+        {
+            if (count is < 1 or > 200)
+            {
+                return Results.BadRequest(new { error = "Count must be between 1 and 200." });
+            }
+
+            return Results.Ok(await lab.GetShortlistAsync(count ?? 40, cancellationToken));
+        });
+        app.MapGet("/api/lab/skill-badges", (
+            string? category,
+            PortfolioPerformanceLab lab,
+            CancellationToken cancellationToken) =>
+        {
+            if (category?.Length > 80)
+            {
+                return Results.BadRequest(new { error = "Category must be at most 80 characters." });
+            }
+
+            return Results.Ok(lab.GetSkillBadges(category, cancellationToken));
+        });
+        app.MapGet("/api/lab/directory-config", (
+            int? profileId,
+            PortfolioPerformanceLab lab,
+            CancellationToken cancellationToken) =>
+        {
+            if (profileId is < 1)
+            {
+                return Results.BadRequest(new { error = "ProfileId must be positive." });
+            }
+
+            return Results.Ok(lab.GetDirectoryConfiguration(profileId ?? 1, cancellationToken));
+        });
     }
 
     private static async Task<IResult> GetPortfolioAsync(
